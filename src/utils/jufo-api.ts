@@ -43,12 +43,23 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
       "predatory journal": { level: 0, norwegianLevel: null, indexed: true, evaluated: true },
       "new journal": { level: null, norwegianLevel: null, indexed: true, evaluated: false },
       "management learning": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
+      "international journal of human-computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
+      "international journal of human–computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
     };
     
-    // Fuzzy matching simulation
-    const matchedKey = Object.keys(mockDatabase).find(k => 
-      normalizedSource.includes(k) || k.includes(normalizedSource)
-    );
+    // Fuzzy matching simulation with improved matching logic
+    const matchedKey = Object.keys(mockDatabase).find(k => {
+      // Normalize both strings for comparison: lowercase, remove dashes, hyphens, and special characters
+      const normalizedKey = k.toLowerCase()
+        .replace(/[\-–—]/g, '') // Replace various types of hyphens/dashes
+        .replace(/[^\w\s]/g, ''); // Remove special characters
+      
+      const normalizedQuery = normalizedSource
+        .replace(/[\-–—]/g, '')
+        .replace(/[^\w\s]/g, '');
+        
+      return normalizedKey.includes(normalizedQuery) || normalizedQuery.includes(normalizedKey);
+    });
     
     // Return mock data or not indexed response
     return matchedKey 

@@ -14,16 +14,26 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
     
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        let jsonData;
         
-        // Get the first sheet
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+        // Handle different file formats (Excel or CSV)
+        if (file.name.endsWith('.csv')) {
+          const csvData = e.target?.result as string;
+          // Parse CSV data
+          const workbook = XLSX.read(csvData, { type: 'string' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          jsonData = XLSX.utils.sheet_to_json(worksheet);
+        } else {
+          // Handle Excel files (.xlsx, .xls)
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          jsonData = XLSX.utils.sheet_to_json(worksheet);
+        }
         
-        // Convert to JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        console.log("Excel data loaded, sample:", jsonData[0]);
+        console.log("Data loaded, first row sample:", jsonData[0]);
         
         // Extract only the relevant metadata
         const processedData: JufoData[] = jsonData.map((row: any) => {
@@ -32,10 +42,11 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
           
           // Handle various field naming conventions from different JUFO export formats
           return {
-            name: row.Name || row.name || row.Title || row['Journal/Series'] || row.Jufo_ID && row['__EMPTY'] || '',
-            issn: row.ISSN || row.issn || row.ISBN || row.isbn || row.ISSNL || row.ISSN1 || '',
-            level: parseInt(row.Level || row.level || row.JUFO || row.jufo || 0, 10),
-            norwegianLevel: row.Norwegian || row.NorwegianLevel || 
+            name: row.Name || row.name || row.Title || row['Journal/Series'] || row.Jufo_ID && row['__EMPTY'] || row['Journal_name'] || '',
+            issn: row.ISSN || row.issn || row.ISBN || row.isbn || row.ISSNL || row.ISSN1 || 
+                  row['Print ISSN'] || row['Online ISSN'] || '',
+            level: parseInt(row.Level || row.level || row.JUFO || row.jufo || row['JUFO Level'] || 0, 10),
+            norwegianLevel: row.Norwegian || row.NorwegianLevel || row['Norwegian Level'] ||
                           (row.indicators && typeof row.indicators === 'string' && 
                            row.indicators.includes('level_norway') ? 
                            parseInt(row.indicators.match(/"level_norway":(\d+)/)?.[1] || '0', 10) : null),
@@ -54,17 +65,17 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
         // Store the processed data
         jufoDatabase = validData;
         
-        console.log(`Processed ${validData.length} valid entries from Excel file`);
+        console.log(`Processed ${validData.length} valid entries from file`);
         
         resolve({ 
           success: true, 
           count: validData.length 
         });
       } catch (error) {
-        console.error("Error processing JUFO Excel file:", error);
+        console.error("Error processing JUFO file:", error);
         reject({ 
           success: false, 
-          error: "Failed to process the Excel file. Please ensure it's a valid JUFO export." 
+          error: "Failed to process the file. Please ensure it's a valid JUFO export." 
         });
       }
     };
@@ -76,7 +87,12 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
       });
     };
     
-    reader.readAsArrayBuffer(file);
+    // Read the file based on its type
+    if (file.name.endsWith('.csv')) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsArrayBuffer(file);
+    }
   });
 };
 
@@ -118,21 +134,28 @@ export const searchJufoDatabase = (source: string): JufoData | null => {
     return match;
   }
   
-  // Strategy 3: Check if the publication name is contained within any database entry
+  // Strategy 3: Check for normalized name match (removing special characters & punctuation)
+  match = findNormalizedMatch(normalizedQuery, currentYearEntries);
+  if (match) {
+    console.log("Found normalized match:", match.name);
+    return match;
+  }
+  
+  // Strategy 4: Check if the publication name is contained within any database entry
   match = findContainsMatch(normalizedQuery, currentYearEntries);
   if (match) {
     console.log("Found contains match:", match.name);
     return match;
   }
   
-  // Strategy 4: Check if any database entry is contained within the publication name
+  // Strategy 5: Check if any database entry is contained within the publication name
   match = findReversedContainsMatch(normalizedQuery, currentYearEntries);
   if (match) {
     console.log("Found reversed contains match:", match.name);
     return match;
   }
   
-  // Strategy 5: Try a tokenized word match approach
+  // Strategy 6: Try a tokenized word match approach
   match = findTokenMatch(normalizedQuery, currentYearEntries);
   if (match) {
     console.log("Found token match:", match.name);
@@ -156,21 +179,28 @@ export const searchJufoDatabase = (source: string): JufoData | null => {
     return match;
   }
   
-  // Strategy 3: Check if the publication name is contained within any database entry
+  // Strategy 3: Check for normalized name match (removing special characters)
+  match = findNormalizedMatch(normalizedQuery, jufoDatabase);
+  if (match) {
+    console.log("Found normalized match in full database:", match.name);
+    return match;
+  }
+  
+  // Strategy 4: Check if the publication name is contained within any database entry
   match = findContainsMatch(normalizedQuery, jufoDatabase);
   if (match) {
     console.log("Found contains match in full database:", match.name);
     return match;
   }
   
-  // Strategy 4: Check if any database entry is contained within the publication name
+  // Strategy 5: Check if any database entry is contained within the publication name
   match = findReversedContainsMatch(normalizedQuery, jufoDatabase);
   if (match) {
     console.log("Found reversed contains match in full database:", match.name);
     return match;
   }
   
-  // Strategy 5: Try a tokenized word match approach
+  // Strategy 6: Try a tokenized word match approach
   match = findTokenMatch(normalizedQuery, jufoDatabase);
   if (match) {
     console.log("Found token match in full database:", match.name);
@@ -192,6 +222,24 @@ function findIssnMatch(query: string, entries: JufoData[]): JufoData | null {
   return entries.find(entry => {
     const cleanIssn = entry.issn.replace(/[^0-9X]/gi, '');
     return cleanIssn && cleanQuery.includes(cleanIssn) || cleanIssn.includes(cleanQuery);
+  }) || null;
+}
+
+// New function to normalize text by removing special characters and punctuation
+function findNormalizedMatch(query: string, entries: JufoData[]): JufoData | null {
+  // Normalize the query: lowercase, remove dashes, hyphens, and special characters
+  const normalizedQuery = query
+    .replace(/[\-–—]/g, '') // Replace various types of hyphens/dashes
+    .replace(/[^\w\s]/g, ''); // Remove special characters
+    
+  return entries.find(entry => {
+    const normalizedName = entry.name.toLowerCase()
+      .replace(/[\-–—]/g, '')
+      .replace(/[^\w\s]/g, '');
+      
+    return normalizedName === normalizedQuery || 
+           normalizedName.includes(normalizedQuery) || 
+           normalizedQuery.includes(normalizedName);
   }) || null;
 }
 
