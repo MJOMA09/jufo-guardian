@@ -9,12 +9,14 @@ export interface Publication {
   norwegianLevel?: number | null;
   indexed: boolean;
   checked: boolean;
+  evaluated?: boolean;
 }
 
 export interface JufoResponse {
   level: number | null;
   norwegianLevel?: number | null;
   indexed: boolean;
+  evaluated: boolean;
 }
 
 export interface JufoData {
@@ -24,6 +26,8 @@ export interface JufoData {
   norwegianLevel?: number | null;
   publisher: string;
   type: string;
+  year?: number;
+  evaluated: boolean;
 }
 
 export interface ImportResult {

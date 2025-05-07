@@ -34,6 +34,7 @@ const Index = () => {
       indexed: false,
       jufoLevel: null,
       norwegianLevel: null,
+      evaluated: true,
     } as Publication));
     
     setPublications((prev) => [...prev, ...newPublications]);
@@ -55,6 +56,7 @@ const Index = () => {
     const updatedPublications = [...publications];
     let checkedCount = 0;
     let indexedCount = 0;
+    let evaluatedCount = 0;
     
     // Check each publication
     for (let i = 0; i < updatedPublications.length; i++) {
@@ -69,11 +71,13 @@ const Index = () => {
             jufoLevel: result.level,
             norwegianLevel: result.norwegianLevel,
             indexed: result.indexed,
+            evaluated: result.evaluated,
             checked: true,
           };
           
           checkedCount++;
           if (result.indexed) indexedCount++;
+          if (result.evaluated) evaluatedCount++;
         } catch (error) {
           console.error("Error checking publication:", error);
         }
@@ -86,7 +90,7 @@ const Index = () => {
     
     toast({
       title: "Check Complete",
-      description: `Checked ${checkedCount} publications. Found ${indexedCount} indexed sources.`,
+      description: `Checked ${checkedCount} publications. Found ${indexedCount} indexed sources (${evaluatedCount} evaluated).`,
     });
   };
 

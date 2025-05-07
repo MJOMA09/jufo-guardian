@@ -17,7 +17,8 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   const [filterLevel, setFilterLevel] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("none");
 
-  const getJufoLevelColor = (level: number | null | undefined): string => {
+  const getJufoLevelColor = (level: number | null | undefined, evaluated: boolean = true): string => {
+    if (!evaluated) return "bg-jufo-unknown";
     if (level === null || level === undefined) return "bg-jufo-unknown";
     return `bg-jufo-${level}`;
   };
@@ -25,6 +26,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   const getJufoLevelText = (publication: Publication): string => {
     if (!publication.checked) return "Pending";
     if (!publication.indexed) return "Not indexed";
+    if (publication.evaluated === false) return "Not evaluated";
     
     return publication.jufoLevel !== null && publication.jufoLevel !== undefined
       ? publication.jufoLevel.toString()
@@ -34,6 +36,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   const getNorwegianLevelText = (publication: Publication): string => {
     if (!publication.checked) return "Pending";
     if (!publication.indexed) return "N/A";
+    if (publication.evaluated === false) return "N/A";
     
     return publication.norwegianLevel !== null && publication.norwegianLevel !== undefined
       ? publication.norwegianLevel.toString()
@@ -44,6 +47,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (filterLevel === "all") return true;
     if (filterLevel === "notIndexed") return !pub.indexed;
     if (filterLevel === "pending") return !pub.checked;
+    if (filterLevel === "notEvaluated") return pub.evaluated === false;
     return pub.jufoLevel?.toString() === filterLevel;
   });
 
@@ -84,6 +88,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                 <SelectItem value="2">JUFO Level 2</SelectItem>
                 <SelectItem value="1">JUFO Level 1</SelectItem>
                 <SelectItem value="0">JUFO Level 0</SelectItem>
+                <SelectItem value="notEvaluated">Not Evaluated</SelectItem>
                 <SelectItem value="notIndexed">Not Indexed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
               </SelectContent>
@@ -144,7 +149,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        className={`${getJufoLevelColor(pub.jufoLevel)}`}
+                        className={`${getJufoLevelColor(pub.jufoLevel, pub.evaluated)}`}
                         variant="outline"
                       >
                         {getJufoLevelText(pub)}

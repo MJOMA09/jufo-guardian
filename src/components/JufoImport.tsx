@@ -10,7 +10,15 @@ import { useToast } from "@/components/ui/use-toast";
 const JufoImport: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [stats, setStats] = useState({ totalEntries: 0, level0: 0, level1: 0, level2: 0, level3: 0 });
+  const [stats, setStats] = useState({ 
+    totalEntries: 0, 
+    currentYearEntries: 0,
+    level0: 0, 
+    level1: 0, 
+    level2: 0, 
+    level3: 0,
+    notEvaluated: 0 
+  });
   const { toast } = useToast();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,6 +61,8 @@ const JufoImport: React.FC = () => {
     }
   };
 
+  const currentYear = new Date().getFullYear();
+
   return (
     <Card>
       <CardHeader>
@@ -71,7 +81,7 @@ const JufoImport: React.FC = () => {
               <div>
                 <p className="font-medium">Database Status: <span className="text-green-600">Active</span></p>
                 <p className="text-sm text-muted-foreground">
-                  {stats.totalEntries} publications indexed
+                  {stats.totalEntries} publications indexed ({stats.currentYearEntries} for {currentYear})
                 </p>
               </div>
               <Button onClick={() => document.getElementById('jufo-file')?.click()}>
@@ -80,7 +90,7 @@ const JufoImport: React.FC = () => {
               </Button>
             </div>
             
-            <div className="grid grid-cols-4 gap-3 mt-4">
+            <div className="grid grid-cols-5 gap-3 mt-4">
               <div className="rounded-md border p-3">
                 <div className="text-2xl font-bold">{stats.level3}</div>
                 <div className="text-xs text-muted-foreground">Level 3</div>
@@ -97,6 +107,14 @@ const JufoImport: React.FC = () => {
                 <div className="text-2xl font-bold">{stats.level0}</div>
                 <div className="text-xs text-muted-foreground">Level 0</div>
               </div>
+              <div className="rounded-md border p-3">
+                <div className="text-2xl font-bold">{stats.notEvaluated}</div>
+                <div className="text-xs text-muted-foreground">Not Evaluated</div>
+              </div>
+            </div>
+            
+            <div className="text-sm mt-1 text-muted-foreground">
+              <p>"Not evaluated" = Professional and general series and scientific channels that have not yet been evaluated.</p>
             </div>
           </div>
         ) : (

@@ -17,7 +17,8 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
         return {
           level: result.level,
           norwegianLevel: result.norwegianLevel,
-          indexed: true
+          indexed: true,
+          evaluated: result.evaluated
         };
       }
     }
@@ -27,15 +28,16 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
     
     // Mock database - in real implementation this would be an API call
     const mockDatabase = {
-      "nature": { level: 3, norwegianLevel: 2, indexed: true },
-      "science": { level: 3, norwegianLevel: 2, indexed: true },
-      "cell": { level: 3, norwegianLevel: 2, indexed: true },
-      "plos one": { level: 1, norwegianLevel: 1, indexed: true },
-      "scientific reports": { level: 1, norwegianLevel: 1, indexed: true },
-      "journal of informetrics": { level: 2, norwegianLevel: 2, indexed: true },
-      "information processing & management": { level: 2, norwegianLevel: 1, indexed: true },
-      "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true },
-      "predatory journal": { level: 0, norwegianLevel: null, indexed: true },
+      "nature": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+      "science": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+      "cell": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+      "plos one": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      "scientific reports": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      "journal of informetrics": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
+      "information processing & management": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
+      "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true, evaluated: true },
+      "predatory journal": { level: 0, norwegianLevel: null, indexed: true, evaluated: true },
+      "new journal": { level: null, norwegianLevel: null, indexed: true, evaluated: false },
     };
     
     // Fuzzy matching simulation
@@ -46,9 +48,9 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
     // Return mock data or not indexed response
     return matchedKey 
       ? mockDatabase[matchedKey as keyof typeof mockDatabase]
-      : { level: null, norwegianLevel: null, indexed: false };
+      : { level: null, norwegianLevel: null, indexed: false, evaluated: false };
   } catch (error) {
     console.error("Error checking JUFO quality:", error);
-    return { level: null, norwegianLevel: null, indexed: false };
+    return { level: null, norwegianLevel: null, indexed: false, evaluated: false };
   }
 };
