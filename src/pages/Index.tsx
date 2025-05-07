@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
 import PublicationList from "@/components/PublicationList";
+import JufoImport from "@/components/JufoImport";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,28 +131,36 @@ const Index = () => {
       </header>
 
       <div className="grid grid-cols-1 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quality Screening Dashboard</CardTitle>
-            <CardDescription>
-              Add publications manually, upload documents, or check JUFO quality rankings.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="manual" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                <TabsTrigger value="upload">File Upload</TabsTrigger>
-              </TabsList>
-              <TabsContent value="manual" className="pt-4">
-                <PublicationForm onAddPublication={addPublication} />
-              </TabsContent>
-              <TabsContent value="upload" className="pt-4">
-                <FileUpload onExtractPublications={extractPublications} />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quality Screening Dashboard</CardTitle>
+                <CardDescription>
+                  Add publications manually, upload documents, or check JUFO quality rankings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="manual" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                    <TabsTrigger value="upload">File Upload</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="manual" className="pt-4">
+                    <PublicationForm onAddPublication={addPublication} />
+                  </TabsContent>
+                  <TabsContent value="upload" className="pt-4">
+                    <FileUpload onExtractPublications={extractPublications} />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div>
+            <JufoImport />
+          </div>
+        </div>
 
         <div className="flex justify-between items-center">
           <Button 

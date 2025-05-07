@@ -1,17 +1,28 @@
 
 import { JufoResponse } from "@/types";
+import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * In a real implementation, this would make actual API calls to JUFO portal
- * For demo, we simulate responses with mock data
+ * First checks the imported database, falls back to mock data if not available
  */
 export const checkJufoQuality = async (source: string): Promise<JufoResponse> => {
   try {
-    // Simulated API call to JUFO portal
     console.log(`Checking JUFO quality for: ${source}`);
     
-    // Simple mock logic for demonstration
+    // If we have imported data, use that first
+    if (hasDatabaseData()) {
+      const result = searchJufoDatabase(source);
+      if (result) {
+        return {
+          level: result.level,
+          norwegianLevel: result.norwegianLevel,
+          indexed: true
+        };
+      }
+    }
+    
+    // Fall back to mock database if no imported data or no match found
     const normalizedSource = source.toLowerCase().trim();
     
     // Mock database - in real implementation this would be an API call

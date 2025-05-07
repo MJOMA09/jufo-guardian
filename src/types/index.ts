@@ -16,3 +16,18 @@ export interface JufoResponse {
   norwegianLevel?: number | null;
   indexed: boolean;
 }
+
+export interface JufoData {
+  name: string;
+  issn: string;
+  level: number;
+  norwegianLevel?: number | null;
+  publisher: string;
+  type: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  count?: number;
+  error?: string;
+}
