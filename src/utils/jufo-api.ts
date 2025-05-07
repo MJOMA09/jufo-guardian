@@ -14,17 +14,21 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
     if (hasDatabaseData()) {
       const result = searchJufoDatabase(source);
       if (result) {
+        console.log(`JUFO database match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel}`);
         return {
           level: result.level,
           norwegianLevel: result.norwegianLevel,
           indexed: true,
           evaluated: result.evaluated
         };
+      } else {
+        console.log(`No match found in JUFO database for: ${source}`);
       }
     }
     
     // Fall back to mock database if no imported data or no match found
     const normalizedSource = source.toLowerCase().trim();
+    console.log(`Falling back to mock database for: ${normalizedSource}`);
     
     // Mock database - in real implementation this would be an API call
     const mockDatabase = {
@@ -38,6 +42,7 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
       "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true, evaluated: true },
       "predatory journal": { level: 0, norwegianLevel: null, indexed: true, evaluated: true },
       "new journal": { level: null, norwegianLevel: null, indexed: true, evaluated: false },
+      "management learning": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
     };
     
     // Fuzzy matching simulation

@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { FileSpreadsheet, Upload, Database } from "lucide-react";
 import { importJufoExcel, getDatabaseStats } from "@/utils/jufo-data";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const JufoImport: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
@@ -25,10 +26,10 @@ const JufoImport: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
       toast({
         title: "Invalid File",
-        description: "Please select an Excel file (.xlsx or .xls)",
+        description: "Please select an Excel or CSV file (.xlsx, .xls, .csv)",
         variant: "destructive",
       });
       return;
@@ -38,8 +39,10 @@ const JufoImport: React.FC = () => {
     setProgress(25);
 
     try {
+      setTimeout(() => setProgress(50), 500);
+      
       const result = await importJufoExcel(file);
-      setProgress(100);
+      setTimeout(() => setProgress(100), 200);
       
       toast({
         title: "Import Successful",
@@ -71,7 +74,7 @@ const JufoImport: React.FC = () => {
           JUFO Reference Database
         </CardTitle>
         <CardDescription>
-          Import JUFO publication ranking data from the official JUFO portal Excel export
+          Import JUFO publication ranking data from the official JUFO portal Excel or CSV export
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -113,9 +116,11 @@ const JufoImport: React.FC = () => {
               </div>
             </div>
             
-            <div className="text-sm mt-1 text-muted-foreground">
-              <p>"Not evaluated" = Professional and general series and scientific channels that have not yet been evaluated.</p>
-            </div>
+            <Alert>
+              <AlertDescription className="text-sm text-muted-foreground">
+                <p>"Not evaluated" = Professional and general series and scientific channels that have not yet been evaluated.</p>
+              </AlertDescription>
+            </Alert>
           </div>
         ) : (
           <div className="space-y-4">
@@ -130,10 +135,10 @@ const JufoImport: React.FC = () => {
                 disabled={isImporting}
               >
                 <Upload className="mr-2 h-4 w-4" />
-                {isImporting ? "Importing..." : "Import JUFO Excel"}
+                {isImporting ? "Importing..." : "Import JUFO Data"}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                Download Excel data from the JUFO portal at <a href="https://jfp.csc.fi/" className="underline" target="_blank" rel="noopener">jfp.csc.fi</a>
+                Download Excel/CSV data from the JUFO portal at <a href="https://jfp.csc.fi/" className="underline" target="_blank" rel="noopener">jfp.csc.fi</a>
               </p>
             </div>
             
@@ -151,7 +156,7 @@ const JufoImport: React.FC = () => {
         <input 
           id="jufo-file" 
           type="file" 
-          accept=".xlsx,.xls" 
+          accept=".xlsx,.xls,.csv" 
           onChange={handleFileChange} 
           className="hidden" 
         />
