@@ -24,7 +24,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const getJufoLevelText = (publication: Publication): string => {
-    if (!publication.checked) return "Pending";
+    if (!publication.checked) return "Not checked";
     if (!publication.indexed) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
     
@@ -34,7 +34,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const getNorwegianLevelText = (publication: Publication): string => {
-    if (!publication.checked) return "Pending";
+    if (!publication.checked) return "Not checked";
     if (!publication.indexed) return "N/A";
     if (publication.evaluated === false) return "N/A";
     
