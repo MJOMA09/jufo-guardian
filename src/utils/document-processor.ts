@@ -128,13 +128,19 @@ export const extractPublicationsFromXML = (xmlString: string): Partial<Publicati
     const title = getElementText('title') || getElementText('article-title');
     const yearText = getElementText('year') || getElementText('publication-date') || getElementText('pub-date');
     
-    // Updated source field to also look for "publish-in" or "publish_in" tags
+    // Extended source field lookup with additional XML tag mappings
     const source = getElementText('source') || 
                   getElementText('journal') || 
                   getElementText('journal-title') ||
                   getElementText('publish-in') ||
                   getElementText('publish_in') ||
-                  getElementText('publishIn');
+                  getElementText('publishIn') ||
+                  getElementText('full-title') ||
+                  getElementText('secondary-title') ||
+                  getElementText('full_title') ||
+                  getElementText('fullTitle') ||
+                  getElementText('secondary_title') ||
+                  getElementText('secondaryTitle');
     
     // Extract year from year text using regex
     const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
