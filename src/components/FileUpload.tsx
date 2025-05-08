@@ -2,9 +2,10 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { extractTextFromFile, extractPublicationsFromText } from "@/utils/document-processor";
+import { processFileAndExtractPublications } from "@/utils/document-processor";
 import { Publication } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
+import { FileSpreadsheet, FileText, FileUp, Loader2 } from "lucide-react";
 
 interface FileUploadProps {
   onExtractPublications: (publications: Partial<Publication>[]) => void;
@@ -19,17 +20,29 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
       const fileType = selectedFile.type;
+      const fileName = selectedFile.name.toLowerCase();
       
-      // Check if file is PDF or DOCX
+      // Check if file is a supported format
       if (
         fileType === "application/pdf" ||
-        fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        fileType === "application/vnd.ms-excel" ||
+        fileType === "text/csv" ||
+        fileType === "text/xml" ||
+        fileType === "application/xml" ||
+        fileName.endsWith('.pdf') ||
+        fileName.endsWith('.docx') ||
+        fileName.endsWith('.xlsx') ||
+        fileName.endsWith('.xls') ||
+        fileName.endsWith('.csv') ||
+        fileName.endsWith('.xml')
       ) {
         setFile(selectedFile);
       } else {
         toast({
           title: "Unsupported File Format",
-          description: "Please upload a PDF or Word document (.docx) file.",
+          description: "Please upload a PDF, Word document, Excel, CSV, or XML file.",
           variant: "destructive",
         });
       }
@@ -48,8 +61,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
 
     setIsLoading(true);
     try {
-      const text = await extractTextFromFile(file);
-      const publications = extractPublicationsFromText(text);
+      const publications = await processFileAndExtractPublications(file);
       
       if (publications.length === 0) {
         toast({
@@ -61,19 +73,32 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
         onExtractPublications(publications);
         toast({
           title: "Publications Extracted",
-          description: `Successfully extracted ${publications.length} publications.`,
+          description: `Successfully extracted ${publications.length} publications from ${file.name}.`,
         });
-        setFile(null);
       }
     } catch (error) {
       console.error("Error processing file:", error);
       toast({
         title: "Processing Error",
-        description: "An error occurred while processing the file.",
+        description: `An error occurred while processing ${file.name}.`,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to get appropriate icon based on file type
+  const getFileIcon = () => {
+    if (!file) return <FileUp className="h-10 w-10 text-gray-400" />;
+    
+    const fileName = file.name.toLowerCase();
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+      return <FileSpreadsheet className="h-10 w-10 text-green-600" />;
+    } else if (fileName.endsWith('.xml')) {
+      return <FileText className="h-10 w-10 text-blue-600" />;
+    } else {
+      return <FileText className="h-10 w-10 text-orange-600" />;
     }
   };
 
@@ -87,7 +112,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
           <input
             id="file-upload"
             type="file"
-            accept=".pdf,.docx"
+            accept=".pdf,.docx,.xlsx,.xls,.csv,.xml"
             onChange={handleFileChange}
             className="hidden"
           />
@@ -96,31 +121,32 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
             className="cursor-pointer text-blue-500 hover:text-blue-600"
           >
             <div className="flex flex-col items-center justify-center space-y-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-10 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
+              {getFileIcon()}
               <span className="text-sm font-medium">
-                {file ? file.name : "Click to select PDF or DOCX file"}
+                {file ? file.name : "Click to select file"}
               </span>
             </div>
           </label>
         </div>
         {file && (
-          <p className="text-sm text-gray-500 text-center">
-            Selected: {file.name}
-          </p>
+          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+            <div className="flex items-center justify-between">
+              <span>Selected file:</span>
+              <span className="font-medium">{file.name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Size:</span>
+              <span>{(file.size / 1024).toFixed(2)} KB</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Type:</span>
+              <span>{file.type || "Unknown"}</span>
+            </div>
+          </div>
         )}
+        <div className="text-xs text-gray-500">
+          <p>Supported file types: PDF, Word, Excel, CSV, XML</p>
+        </div>
       </CardContent>
       <CardFooter>
         <Button
@@ -128,7 +154,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
           disabled={!file || isLoading}
           className="w-full"
         >
-          {isLoading ? "Processing..." : "Extract Publications"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Extract Publications"
+          )}
         </Button>
       </CardFooter>
     </Card>

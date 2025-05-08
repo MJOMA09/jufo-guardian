@@ -14,7 +14,7 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
     if (hasDatabaseData()) {
       const result = searchJufoDatabase(source);
       if (result) {
-        console.log(`JUFO database match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel}`);
+        console.log(`JUFO database match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
         return {
           level: result.level,
           norwegianLevel: result.norwegianLevel,

@@ -1,18 +1,17 @@
 
 import { Publication } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import * as XLSX from 'xlsx';
 
 /**
  * Extract publications from text content
- * In a production scenario, this would use more advanced NLP techniques
- * For the demo, we use simplified extraction logic
+ * Uses simplified extraction logic for text-based documents
  */
 export const extractPublicationsFromText = (text: string): Partial<Publication>[] => {
   const lines = text.split('\n').filter(line => line.trim() !== '');
   const publications: Partial<Publication>[] = [];
   
-  // Very simple extraction logic - in real implementation would use better NLP
-  // For demo, assume each line could be a publication entry
+  // Simple extraction logic for text content
   for (const line of lines) {
     // Try to identify author patterns like "Smith, J." or "Smith et al."
     if (/[A-Z][a-z]+,\s[A-Z]\./.test(line) || /[A-Z][a-z]+\set\sal\./.test(line)) {
@@ -24,7 +23,6 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
         const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
         
         // Attempt to identify title and source
-        // This is a simplified approach - real implementation would use NLP
         const titleIndex = line.indexOf('"');
         let title = "";
         let source = "";
@@ -59,48 +57,201 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
 };
 
 /**
- * Extract text from PDF or DOCX files
- * In a real implementation, this would use a PDF/DOCX parser library
+ * Extract publications from Excel or CSV files
  */
-export const extractTextFromFile = async (file: File): Promise<string> => {
+export const extractPublicationsFromSpreadsheet = (data: ArrayBuffer): Partial<Publication>[] => {
+  const workbook = XLSX.read(data, { type: 'array' });
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[firstSheetName];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  
+  const publications: Partial<Publication>[] = [];
+  
+  jsonData.forEach((row: any) => {
+    // Try to map common column names for publications
+    const authors = row.Authors || row.authors || row.Author || row.AUTHOR || row['Author(s)'] || '';
+    const title = row.Title || row.title || row.Name || row.name || '';
+    const year = row.Year || row.year || row.Date || row.date || new Date().getFullYear();
+    const source = row.Source || row.source || row.Journal || row.journal || 
+                  row['Publication'] || row['Journal/Series'] || '';
+    
+    if (title) {
+      publications.push({
+        id: uuidv4(),
+        authors: typeof authors === 'string' ? authors : JSON.stringify(authors),
+        title: typeof title === 'string' ? title : JSON.stringify(title),
+        year: typeof year === 'number' ? year : parseInt(year) || new Date().getFullYear(),
+        source: typeof source === 'string' ? source : JSON.stringify(source),
+        checked: false,
+        indexed: false,
+      });
+    }
+  });
+  
+  return publications;
+};
+
+/**
+ * Extract publications from XML files
+ */
+export const extractPublicationsFromXML = (xmlString: string): Partial<Publication>[] => {
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+  const publications: Partial<Publication>[] = [];
+  
+  // Handle different possible XML structures
+  // First try records/record structure
+  let records = xmlDoc.getElementsByTagName('record');
+  
+  // If no records found, try publications/publication structure
+  if (records.length === 0) {
+    records = xmlDoc.getElementsByTagName('publication');
+  }
+  
+  // If still no records found, try articles/article structure
+  if (records.length === 0) {
+    records = xmlDoc.getElementsByTagName('article');
+  }
+  
+  // Process each record
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    
+    // Helper function to get element text content safely
+    const getElementText = (tagName: string): string => {
+      const elements = record.getElementsByTagName(tagName);
+      return elements.length > 0 ? elements[0].textContent || '' : '';
+    };
+    
+    // Try different common tag names for publication metadata
+    const authors = getElementText('authors') || getElementText('author') || getElementText('contributors');
+    const title = getElementText('title') || getElementText('article-title');
+    const yearText = getElementText('year') || getElementText('publication-date') || getElementText('pub-date');
+    const source = getElementText('source') || getElementText('journal') || getElementText('journal-title');
+    
+    // Extract year from year text using regex
+    const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
+    const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
+    
+    publications.push({
+      id: uuidv4(),
+      authors: authors || "Unknown authors",
+      title: title || "Unknown title",
+      year,
+      source: source || "Unknown source",
+      checked: false,
+      indexed: false,
+    });
+  }
+  
+  return publications;
+};
+
+/**
+ * Extract text from PDF, DOCX, Excel, CSV or XML files
+ * Uses appropriate parser based on file type
+ */
+export const extractTextFromFile = async (file: File): Promise<string | ArrayBuffer> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    const fileType = file.type;
+    const fileName = file.name.toLowerCase();
     
-    reader.onload = (event) => {
-      if (!event.target?.result) {
-        return reject(new Error("Failed to read file"));
-      }
-      
-      // For a real implementation, use libraries like pdf.js for PDF or 
-      // mammoth.js for DOCX to properly extract text
-      // This is just a simple text extraction for demonstration
-      
-      // Check if this is a PDF file (starts with %PDF-)
-      const content = event.target.result as ArrayBuffer;
-      const uint8Array = new Uint8Array(content);
-      const header = new TextDecoder('utf-8').decode(uint8Array.slice(0, 5));
-      
-      if (header === '%PDF-') {
-        // In real implementation: use pdf.js or similar library
-        // For demo: return placeholder text
-        resolve("Smith, J. (2023). \"The impact of academic publishing on career advancement.\" Journal of Informetrics. 2023.\n" +
-                "Johnson et al. \"Quality metrics in scientific journals.\" Nature. 2022.\n" +
-                "Brown, A. \"Predatory journals and academic integrity.\" Predatory Journal. 2021.");
-      } else {
-        // Assume DOCX or text
-        // In real implementation: use mammoth.js or similar for DOCX
-        // For demo: return placeholder text
-        resolve("Garcia, M. et al. \"Bibliometric analysis of open access journals.\" PLOS ONE. 2023.\n" +
-                "Wang et al. \"Machine learning applications in scientometrics.\" Scientific Reports. 2022.\n" +
-                "Taylor, S. \"Information retrieval in digital libraries.\" Information Processing & Management. 2021.");
-      }
-    };
+    console.log(`Processing file: ${fileName} (${fileType})`);
+    
+    if (fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || 
+        fileType === "application/vnd.ms-excel" ||
+        fileName.endsWith('.xlsx') || 
+        fileName.endsWith('.xls') || 
+        fileName.endsWith('.csv')) {
+      // Handle Excel/CSV
+      reader.onload = (e) => {
+        if (!e.target?.result) {
+          return reject(new Error("Failed to read file"));
+        }
+        resolve(e.target.result);
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (fileType === "text/xml" || 
+              fileType === "application/xml" || 
+              fileName.endsWith('.xml')) {
+      // Handle XML
+      reader.onload = (e) => {
+        if (!e.target?.result) {
+          return reject(new Error("Failed to read file"));
+        }
+        resolve(e.target.result as string);
+      };
+      reader.readAsText(file);
+    } else {
+      // Handle PDF or DOCX (text-based extraction)
+      // In real implementation: use pdf.js or mammoth.js
+      reader.onload = (e) => {
+        if (!e.target?.result) {
+          return reject(new Error("Failed to read file"));
+        }
+        
+        // In real implementation, we'd use proper PDF/DOCX parser libraries
+        // For now, we'll just extract a small sample of the binary content for PDF
+        if (fileType === "application/pdf" || fileName.endsWith('.pdf')) {
+          const content = e.target.result as ArrayBuffer;
+          const uint8Array = new Uint8Array(content);
+          // Extract text representation of first 100 bytes for demo
+          const textSample = Array.from(uint8Array.slice(0, 100))
+            .map(byte => String.fromCharCode(byte))
+            .join('');
+          
+          // Return a placeholder text that includes the file name
+          resolve(`Sample text extracted from PDF: ${file.name}\n` +
+                  `Start of binary content: ${textSample}\n` +
+                  `File size: ${file.size} bytes`);
+        } else {
+          // For DOCX and other text formats
+          // Return a placeholder that includes the file name
+          resolve(`Sample text extracted from ${file.name}\n` +
+                  `File type: ${file.type}\n` +
+                  `File size: ${file.size} bytes`);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
     
     reader.onerror = () => {
-      reject(new Error("Error reading file"));
+      reject(new Error(`Error reading file: ${file.name}`));
     };
-    
-    // Read file as array buffer
-    reader.readAsArrayBuffer(file);
   });
+};
+
+/**
+ * Process file and extract publications based on file type
+ */
+export const processFileAndExtractPublications = async (file: File): Promise<Partial<Publication>[]> => {
+  console.log(`Processing file for publication extraction: ${file.name}`);
+  const fileType = file.type;
+  const fileName = file.name.toLowerCase();
+
+  try {
+    const content = await extractTextFromFile(file);
+    
+    // Handle different file types
+    if (fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || 
+        fileType === "application/vnd.ms-excel" ||
+        fileName.endsWith('.xlsx') || 
+        fileName.endsWith('.xls') || 
+        fileName.endsWith('.csv')) {
+      // Excel/CSV processing
+      return extractPublicationsFromSpreadsheet(content as ArrayBuffer);
+    } else if (fileType === "text/xml" || 
+              fileType === "application/xml" || 
+              fileName.endsWith('.xml')) {
+      // XML processing
+      return extractPublicationsFromXML(content as string);
+    } else {
+      // PDF/DOCX processing (text-based)
+      return extractPublicationsFromText(content as string);
+    }
+  } catch (error) {
+    console.error("Error processing file:", error);
+    throw error;
+  }
 };
