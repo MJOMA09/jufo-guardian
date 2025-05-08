@@ -127,7 +127,14 @@ export const extractPublicationsFromXML = (xmlString: string): Partial<Publicati
     const authors = getElementText('authors') || getElementText('author') || getElementText('contributors');
     const title = getElementText('title') || getElementText('article-title');
     const yearText = getElementText('year') || getElementText('publication-date') || getElementText('pub-date');
-    const source = getElementText('source') || getElementText('journal') || getElementText('journal-title');
+    
+    // Updated source field to also look for "publish-in" or "publish_in" tags
+    const source = getElementText('source') || 
+                  getElementText('journal') || 
+                  getElementText('journal-title') ||
+                  getElementText('publish-in') ||
+                  getElementText('publish_in') ||
+                  getElementText('publishIn');
     
     // Extract year from year text using regex
     const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
