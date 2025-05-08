@@ -24,6 +24,11 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const getJufoLevelText = (publication: Publication): string => {
+    // For unknown sources or empty sources
+    if (!publication.source || publication.source.toLowerCase().includes("unknown")) {
+      return "Not checked";
+    }
+    
     if (!publication.checked) return "Not checked";
     if (!publication.indexed) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
@@ -34,6 +39,11 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const getNorwegianLevelText = (publication: Publication): string => {
+    // For unknown sources or empty sources
+    if (!publication.source || publication.source.toLowerCase().includes("unknown")) {
+      return "Not checked";
+    }
+    
     if (!publication.checked) return "Not checked";
     if (!publication.indexed) return "N/A";
     if (publication.evaluated === false) return "N/A";

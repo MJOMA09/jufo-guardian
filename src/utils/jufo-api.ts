@@ -10,6 +10,12 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
   try {
     console.log(`Checking JUFO quality for: ${source}`);
     
+    // Check if source is empty or contains "unknown" text
+    if (!source || source.trim() === "" || source.toLowerCase().includes("unknown")) {
+      console.log("Unknown or empty source detected");
+      return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true };
+    }
+    
     // If we have imported data, use that first
     if (hasDatabaseData()) {
       const result = searchJufoDatabase(source);
@@ -19,7 +25,8 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
           level: result.level,
           norwegianLevel: result.norwegianLevel,
           indexed: true,
-          evaluated: result.evaluated
+          evaluated: result.evaluated,
+          checked: true
         };
       } else {
         console.log(`No match found in JUFO database for: ${source}`);
@@ -63,10 +70,10 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
     
     // Return mock data or not indexed response
     return matchedKey 
-      ? mockDatabase[matchedKey as keyof typeof mockDatabase]
-      : { level: null, norwegianLevel: null, indexed: false, evaluated: false };
+      ? { ...mockDatabase[matchedKey as keyof typeof mockDatabase], checked: true }
+      : { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true };
   } catch (error) {
     console.error("Error checking JUFO quality:", error);
-    return { level: null, norwegianLevel: null, indexed: false, evaluated: false };
+    return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true };
   }
 };

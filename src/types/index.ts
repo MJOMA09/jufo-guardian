@@ -17,6 +17,7 @@ export interface JufoResponse {
   norwegianLevel?: number | null;
   indexed: boolean;
   evaluated: boolean;
+  checked?: boolean;
 }
 
 export interface JufoData {
