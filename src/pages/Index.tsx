@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
+import { Filter } from "lucide-react";
 
 const Index = () => {
   const [publications, setPublications] = useState<Publication[]>([]);
@@ -128,9 +129,17 @@ const Index = () => {
   return (
     <div className="container mx-auto py-8">
       <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2">SciFilter</h1>
-        <p className="text-muted-foreground">
-          AI-Powered Academic Publication Quality Screening System
+        <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
+          <Filter className="mr-2 h-6 w-6 text-purple-600" /> SciFilter
+        </h1>
+        <p className="text-lg font-medium text-purple-600 mb-2">
+          Filter the noise. Trust the science.
+        </p>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          SciFilter is an intelligent screening tool that evaluates the credibility of academic 
+          publications by referencing the JUFO and Norwegian sources quality rankings. Whether 
+          uploaded in bulk or entered manually, SciFilter ensures that only high-quality sources 
+          pass your research standards.
         </p>
       </header>
 
