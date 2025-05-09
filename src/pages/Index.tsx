@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
@@ -136,7 +135,7 @@ const Index = () => {
           Filter the noise. Trust the science.
         </p>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          SciFilter is an intelligent screening tool that evaluates the credibility of academic 
+          SciFilter is an AI-powered academic publication quality intelligent screening tool that evaluates the credibility of academic 
           publications by referencing the JUFO and Norwegian sources quality rankings. Whether 
           uploaded in bulk or entered manually, SciFilter ensures that only high-quality sources 
           pass your research standards.
