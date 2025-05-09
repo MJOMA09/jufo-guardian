@@ -10,6 +10,9 @@ export interface Publication {
   indexed: boolean;
   checked: boolean;
   evaluated?: boolean;
+  issn?: string;
+  isbn?: string;
+  doi?: string;
 }
 
 export interface JufoResponse {
