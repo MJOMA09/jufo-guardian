@@ -4,6 +4,8 @@ import { JufoData } from "@/types";
 
 // Store for imported JUFO data
 let jufoDatabase: JufoData[] = [];
+// Track the latest year available in the database
+let latestDatabaseYear: number = new Date().getFullYear(); // Default to current year
 
 /**
  * Process and import JUFO data from an Excel file
@@ -35,12 +37,22 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
         
         console.log("Data loaded, first row sample:", jsonData[0]);
         
+        // Get current year
+        const currentYear = new Date().getFullYear();
+        
+        // Determine latest year in data
+        let maxYear = currentYear;
+        
         // Extract only the relevant metadata
         const processedData: JufoData[] = jsonData.map((row: any) => {
-          // Get current year
-          const currentYear = new Date().getFullYear();
-          
           // Handle various field naming conventions from different JUFO export formats
+          const year = parseInt(row.Year || row.year || currentYear, 10);
+          
+          // Track max year
+          if (year > maxYear) {
+            maxYear = year;
+          }
+          
           return {
             name: row.Name || row.name || row.Title || row['Journal/Series'] || row.Jufo_ID && row['__EMPTY'] || row['Journal_name'] || '',
             issn: row.ISSN || row.issn || row.ISBN || row.isbn || row.ISSNL || row.ISSN1 || 
@@ -52,7 +64,7 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
                            parseInt(row.indicators.match(/"level_norway":(\d+)/)?.[1] || '0', 10) : null),
             publisher: row.Publisher || row.publisher || '',
             type: row.Type || row.type || row.Type_en || 'journal',
-            year: row.Year || row.year || currentYear,
+            year: year,
             evaluated: row.Level !== undefined && row.Level !== null || 
                       row.level !== undefined && row.level !== null ||
                       (row.isScientific === 'true' || row.isScientific === true)
@@ -64,6 +76,10 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
         
         // Store the processed data
         jufoDatabase = validData;
+        
+        // Update the latest year
+        latestDatabaseYear = maxYear;
+        console.log(`Latest year in database: ${latestDatabaseYear}`);
         
         console.log(`Processed ${validData.length} valid entries from file`);
         
@@ -97,6 +113,13 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
 };
 
 /**
+ * Get the latest year available in the database
+ */
+export const getLatestDatabaseYear = (): number => {
+  return latestDatabaseYear;
+};
+
+/**
  * Search for a publication in the imported JUFO database
  * Uses multiple strategies to find the best match
  */
@@ -109,61 +132,59 @@ export const searchJufoDatabase = (source: string): JufoData | null => {
   const normalizedQuery = source.toLowerCase().trim();
   console.log(`Searching for: "${normalizedQuery}" in database of ${jufoDatabase.length} entries`);
   
-  const currentYear = new Date().getFullYear();
-  
-  // Filter to current year's rankings first
-  const currentYearEntries = jufoDatabase.filter(entry => 
-    entry.year === currentYear || !entry.year
+  // Filter to latest year's rankings first
+  const latestYearEntries = jufoDatabase.filter(entry => 
+    entry.year === latestDatabaseYear || !entry.year
   );
   
-  console.log(`Found ${currentYearEntries.length} entries for current year ${currentYear}`);
+  console.log(`Found ${latestYearEntries.length} entries for latest year ${latestDatabaseYear}`);
   
   // Try different search strategies in order of precision
   
   // Strategy 1: Exact match on name
-  let match = findExactMatch(normalizedQuery, currentYearEntries);
+  let match = findExactMatch(normalizedQuery, latestYearEntries);
   if (match) {
     console.log("Found exact name match:", match.name);
     return match;
   }
   
   // Strategy 2: Check for ISSN match
-  match = findIssnMatch(normalizedQuery, currentYearEntries);
+  match = findIssnMatch(normalizedQuery, latestYearEntries);
   if (match) {
     console.log("Found ISSN match:", match.issn);
     return match;
   }
   
   // Strategy 3: Check for normalized name match (removing special characters & punctuation)
-  match = findNormalizedMatch(normalizedQuery, currentYearEntries);
+  match = findNormalizedMatch(normalizedQuery, latestYearEntries);
   if (match) {
     console.log("Found normalized match:", match.name);
     return match;
   }
   
   // Strategy 4: Check if the publication name is contained within any database entry
-  match = findContainsMatch(normalizedQuery, currentYearEntries);
+  match = findContainsMatch(normalizedQuery, latestYearEntries);
   if (match) {
     console.log("Found contains match:", match.name);
     return match;
   }
   
   // Strategy 5: Check if any database entry is contained within the publication name
-  match = findReversedContainsMatch(normalizedQuery, currentYearEntries);
+  match = findReversedContainsMatch(normalizedQuery, latestYearEntries);
   if (match) {
     console.log("Found reversed contains match:", match.name);
     return match;
   }
   
   // Strategy 6: Try a tokenized word match approach
-  match = findTokenMatch(normalizedQuery, currentYearEntries);
+  match = findTokenMatch(normalizedQuery, latestYearEntries);
   if (match) {
     console.log("Found token match:", match.name);
     return match;
   }
   
-  // If no match in current year data, fall back to the full database with the same strategies
-  console.log("No match in current year data, trying full database");
+  // If no match in latest year data, fall back to the full database with the same strategies
+  console.log("No match in latest year data, trying full database");
   
   // Strategy 1: Exact match on name
   match = findExactMatch(normalizedQuery, jufoDatabase);
@@ -286,18 +307,18 @@ export const hasDatabaseData = (): boolean => {
  * Get database stats
  */
 export const getDatabaseStats = () => {
-  const currentYear = new Date().getFullYear();
-  const currentYearEntries = jufoDatabase.filter(entry => 
-    entry.year === currentYear || !entry.year
+  const latestYearEntries = jufoDatabase.filter(entry => 
+    entry.year === latestDatabaseYear || !entry.year
   );
   
   return {
     totalEntries: jufoDatabase.length,
-    currentYearEntries: currentYearEntries.length,
-    level0: currentYearEntries.filter(entry => entry.level === 0).length,
-    level1: currentYearEntries.filter(entry => entry.level === 1).length,
-    level2: currentYearEntries.filter(entry => entry.level === 2).length,
-    level3: currentYearEntries.filter(entry => entry.level === 3).length,
-    notEvaluated: currentYearEntries.filter(entry => !entry.evaluated).length,
+    currentYearEntries: latestYearEntries.length,
+    latestYear: latestDatabaseYear,
+    level0: latestYearEntries.filter(entry => entry.level === 0).length,
+    level1: latestYearEntries.filter(entry => entry.level === 1).length,
+    level2: latestYearEntries.filter(entry => entry.level === 2).length,
+    level3: latestYearEntries.filter(entry => entry.level === 3).length,
+    notEvaluated: latestYearEntries.filter(entry => !entry.evaluated).length,
   };
 };

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { FileSpreadsheet, Upload, Database } from "lucide-react";
-import { importJufoExcel, getDatabaseStats } from "@/utils/jufo-data";
+import { importJufoExcel, getDatabaseStats, getLatestDatabaseYear } from "@/utils/jufo-data";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -14,6 +14,7 @@ const JufoImport: React.FC = () => {
   const [stats, setStats] = useState({ 
     totalEntries: 0, 
     currentYearEntries: 0,
+    latestYear: new Date().getFullYear(),
     level0: 0, 
     level1: 0, 
     level2: 0, 
@@ -64,8 +65,6 @@ const JufoImport: React.FC = () => {
     }
   };
 
-  const currentYear = new Date().getFullYear();
-
   return (
     <Card>
       <CardHeader>
@@ -84,7 +83,7 @@ const JufoImport: React.FC = () => {
               <div>
                 <p className="font-medium">Database Status: <span className="text-green-600">Active</span></p>
                 <p className="text-sm text-muted-foreground">
-                  {stats.totalEntries} publications indexed ({stats.currentYearEntries} for {currentYear})
+                  {stats.totalEntries} publications indexed ({stats.currentYearEntries} for {stats.latestYear})
                 </p>
               </div>
               <Button onClick={() => document.getElementById('jufo-file')?.click()}>
