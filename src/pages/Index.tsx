@@ -128,7 +128,7 @@ const Index = () => {
   return (
     <div className="container mx-auto py-8">
       <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2">JUFO-Scribe</h1>
+        <h1 className="text-3xl font-bold mb-2">SciFilter</h1>
         <p className="text-muted-foreground">
           AI-Powered Academic Publication Quality Screening System
         </p>
