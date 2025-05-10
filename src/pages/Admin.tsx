@@ -1,17 +1,25 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileSpreadsheet, Upload, Database, Shield } from "lucide-react";
+import { FileSpreadsheet, Upload, Database, Shield, Key } from "lucide-react";
 import { importJufoExcel, getDatabaseStats, getLatestDatabaseYear } from "@/utils/jufo-data";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
+import { isAuthenticated, setAuthenticated, updatePassword } from "@/utils/auth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const Admin: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [stats, setStats] = useState({ 
     totalEntries: 0, 
     currentYearEntries: 0,
@@ -24,6 +32,16 @@ const Admin: React.FC = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Check authentication
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate('/login');
+    } else {
+      // Load stats once authenticated
+      setStats(getDatabaseStats());
+    }
+  }, [navigate]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,6 +84,53 @@ const Admin: React.FC = () => {
       e.target.value = '';
     }
   };
+  
+  const handleLogout = () => {
+    setAuthenticated(false);
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
+    navigate('/login');
+  };
+  
+  const handlePasswordUpdate = () => {
+    // Reset error
+    setPasswordError('');
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All fields are required');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+    
+    const success = updatePassword(currentPassword, newPassword);
+    
+    if (success) {
+      toast({
+        title: "Password updated",
+        description: "Your password has been updated successfully",
+      });
+      
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsPasswordOpen(false);
+    } else {
+      setPasswordError('Current password is incorrect');
+    }
+  };
 
   return (
     <div className="container mx-auto py-8">
@@ -76,16 +141,82 @@ const Admin: React.FC = () => {
         <p className="text-lg font-medium text-purple-600 mb-2">
           Database Management System
         </p>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/')}
-          className="mt-2"
-        >
-          Return to Main Application
-        </Button>
+        <div className="flex justify-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/')}
+          >
+            Return to Main Application
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            className="text-red-500 hover:bg-red-50"
+          >
+            Logout
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-8 max-w-3xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Key className="mr-2 h-5 w-5" />
+              Security Settings
+            </CardTitle>
+            <CardDescription>
+              Update your admin password
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Collapsible open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  {isPasswordOpen ? "Cancel" : "Change Password"}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <div className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input 
+                      id="current-password" 
+                      type="password" 
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input 
+                      id="new-password" 
+                      type="password" 
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input 
+                      id="confirm-password" 
+                      type="password" 
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  {passwordError && (
+                    <p className="text-sm font-medium text-destructive">{passwordError}</p>
+                  )}
+                  <Button onClick={handlePasswordUpdate} className="w-full">
+                    Update Password
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

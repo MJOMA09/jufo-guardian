@@ -78,7 +78,7 @@ const JufoImport: React.FC = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/login')}
             className="text-xs"
           >
             Admin Access
