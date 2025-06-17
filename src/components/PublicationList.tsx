@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,11 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset to first page when publications change or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [publications.length, filterLevel, sortBy]);
 
   const getJufoLevelColor = (level: number | null | undefined, evaluated: boolean = true): string => {
     if (!evaluated) return "bg-jufo-unknown";
@@ -92,6 +97,22 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     );
   };
 
+  // Enhanced ISSN/ISBN display functions
+  const displayISSN = (issn: string | undefined): string => {
+    if (!issn) return '-';
+    // Ensure proper ISSN format (XXXX-XXXX)
+    const cleaned = issn.replace(/[^0-9X]/gi, '');
+    if (cleaned.length === 8) {
+      return `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
+    }
+    return issn; // Return as-is if not standard format
+  };
+
+  const displayISBN = (isbn: string | undefined): string => {
+    if (!isbn) return '-';
+    return isbn;
+  };
+
   const filteredPublications = publications.filter((pub) => {
     if (filterLevel === "all") return true;
     if (filterLevel === "notIndexed") return !pub.indexed;
@@ -117,14 +138,16 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
   });
 
-  // Pagination logic
+  // Pagination logic with proper bounds checking
   const totalPages = Math.ceil(sortedPublications.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentPublications = sortedPublications.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   const handleItemsPerPageChange = (value: string) => {
@@ -262,13 +285,13 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                           {pub.source}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {pub.issnPrint || '-'}
+                          {displayISSN(pub.issnPrint)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {pub.issnOnline || '-'}
+                          {displayISSN(pub.issnOnline)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {pub.isbn || '-'}
+                          {displayISBN(pub.isbn)}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -304,13 +327,24 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious 
-                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                        onClick={() => handlePageChange(currentPage - 1)}
                         className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
                     
+                    {/* Smart pagination display */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const pageNumber = i + 1;
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+                      
                       return (
                         <PaginationItem key={pageNumber}>
                           <PaginationLink
@@ -324,7 +358,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                       );
                     })}
                     
-                    {totalPages > 5 && (
+                    {totalPages > 5 && currentPage < totalPages - 2 && (
                       <PaginationItem>
                         <PaginationEllipsis />
                       </PaginationItem>
@@ -332,7 +366,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                     
                     <PaginationItem>
                       <PaginationNext 
-                        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                        onClick={() => handlePageChange(currentPage + 1)}
                         className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
@@ -407,23 +441,23 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
-                  <p className="font-mono text-sm">{selectedPublication.issnPrint || '-'}</p>
+                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnPrint)}</p>
                 </div>
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
-                  <p className="font-mono text-sm">{selectedPublication.issnOnline || '-'}</p>
+                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnOnline)}</p>
                 </div>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
-                <p className="font-mono text-sm">{selectedPublication.isbn || '-'}</p>
+                <p className="font-mono text-sm">{displayISBN(selectedPublication.isbn)}</p>
               </div>
               
               {selectedPublication.issn && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">ISSN</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">ISSN (General)</h3>
                   <p className="font-mono text-sm">{selectedPublication.issn}</p>
                 </div>
               )}
