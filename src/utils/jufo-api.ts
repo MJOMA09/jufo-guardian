@@ -6,27 +6,29 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
  * Check publication quality in the JUFO portal
  * First checks the imported database, falls back to mock data if not available
  */
-export const checkJufoQuality = async (source: string): Promise<JufoResponse> => {
+export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
-    console.log(`Checking JUFO quality for: ${source}`);
+    console.log(`Checking JUFO quality for: ${source}, ISSN Print: ${issnPrint}, ISSN Online: ${issnOnline}, ISBN: ${isbn}`);
     
     // Check if source is empty or contains "unknown" text
     if (!source || source.trim() === "" || source.toLowerCase().includes("unknown")) {
       console.log("Unknown or empty source detected");
-      return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true };
+      return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
     }
     
     // If we have imported data, use that first
     if (hasDatabaseData()) {
-      const result = searchJufoDatabase(source);
+      const result = searchJufoDatabase(source, issnPrint, issnOnline, isbn);
       if (result) {
+        const isIndexed = result.level !== null && result.level !== 0;
         console.log(`JUFO database match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
         return {
           level: result.level,
           norwegianLevel: result.norwegianLevel,
-          indexed: true,
+          indexed: isIndexed,
           evaluated: result.evaluated,
-          checked: true
+          checked: true,
+          status: isIndexed ? 'Indexed' : 'Not Indexed'
         };
       } else {
         console.log(`No match found in JUFO database for: ${source}`);
@@ -69,11 +71,19 @@ export const checkJufoQuality = async (source: string): Promise<JufoResponse> =>
     });
     
     // Return mock data or not indexed response
-    return matchedKey 
-      ? { ...mockDatabase[matchedKey as keyof typeof mockDatabase], checked: true }
-      : { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true };
+    if (matchedKey) {
+      const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
+      const isIndexed = mockResult.level !== null && mockResult.level !== 0;
+      return { 
+        ...mockResult, 
+        checked: true,
+        status: isIndexed ? 'Indexed' : 'Not Indexed'
+      };
+    } else {
+      return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
+    }
   } catch (error) {
     console.error("Error checking JUFO quality:", error);
-    return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true };
+    return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
   }
 };

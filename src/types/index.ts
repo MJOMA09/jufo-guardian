@@ -1,4 +1,3 @@
-
 export interface Publication {
   id: string;
   authors: string;
@@ -11,8 +10,11 @@ export interface Publication {
   checked: boolean;
   evaluated?: boolean;
   issn?: string;
+  issnPrint?: string;
+  issnOnline?: string;
   isbn?: string;
   doi?: string;
+  status?: 'Indexed' | 'Not Indexed' | 'Pending';
 }
 
 export interface JufoResponse {

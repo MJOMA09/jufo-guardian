@@ -62,8 +62,13 @@ const Index = () => {
     for (let i = 0; i < updatedPublications.length; i++) {
       if (!updatedPublications[i].checked) {
         try {
-          // Check JUFO quality
-          const result = await checkJufoQuality(updatedPublications[i].source);
+          // Check JUFO quality with ISSN fields
+          const result = await checkJufoQuality(
+            updatedPublications[i].source,
+            updatedPublications[i].issnPrint,
+            updatedPublications[i].issnOnline,
+            updatedPublications[i].isbn
+          );
           
           // Update publication with result
           updatedPublications[i] = {
@@ -73,6 +78,7 @@ const Index = () => {
             indexed: result.indexed,
             evaluated: result.evaluated,
             checked: true,
+            status: result.status,
           };
           
           checkedCount++;
