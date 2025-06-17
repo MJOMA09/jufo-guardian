@@ -22,6 +22,10 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
         const yearMatch = lastPart.match(/\b(19|20)\d{2}\b/);
         const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
         
+        // Extract ISSN and ISBN patterns
+        const issnMatch = line.match(/ISSN[\s:]*(\d{4}-\d{3}[\dXx])/i);
+        const isbnMatch = line.match(/ISBN[\s:]*(\d{3}-\d{1,5}-\d{1,7}-\d{1,7}-[\dXx]|\d{10}|\d{13})/i);
+        
         // Attempt to identify title and source
         const titleIndex = line.indexOf('"');
         let title = "";
@@ -46,6 +50,8 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
           title: title || "Unknown title",
           year,
           source: source || "Unknown source",
+          issnPrint: issnMatch ? issnMatch[1] : undefined,
+          isbn: isbnMatch ? isbnMatch[1] : undefined,
           checked: false,
           indexed: false,
         });
@@ -75,6 +81,14 @@ export const extractPublicationsFromSpreadsheet = (data: ArrayBuffer): Partial<P
     const source = row.Source || row.source || row.Journal || row.journal || 
                   row['Publication'] || row['Journal/Series'] || '';
     
+    // Extract ISSN and ISBN fields with various possible column names
+    const issnPrint = row['ISSN Print'] || row['ISSN_Print'] || row.issnPrint || 
+                     row['Print ISSN'] || row.printISSN || '';
+    const issnOnline = row['ISSN Online'] || row['ISSN_Online'] || row.issnOnline || 
+                      row['Online ISSN'] || row.onlineISSN || row['Electronic ISSN'] || '';
+    const issn = row.ISSN || row.issn || row.ISSNL || '';
+    const isbn = row.ISBN || row.isbn || '';
+    
     if (title) {
       publications.push({
         id: uuidv4(),
@@ -82,6 +96,9 @@ export const extractPublicationsFromSpreadsheet = (data: ArrayBuffer): Partial<P
         title: typeof title === 'string' ? title : JSON.stringify(title),
         year: typeof year === 'number' ? year : parseInt(year) || new Date().getFullYear(),
         source: typeof source === 'string' ? source : JSON.stringify(source),
+        issnPrint: issnPrint || (issn && !issnOnline ? issn : undefined),
+        issnOnline: issnOnline || undefined,
+        isbn: isbn || undefined,
         checked: false,
         indexed: false,
       });
@@ -142,6 +159,12 @@ export const extractPublicationsFromXML = (xmlString: string): Partial<Publicati
                   getElementText('secondary_title') ||
                   getElementText('secondaryTitle');
     
+    // Extract ISSN and ISBN fields
+    const issnPrint = getElementText('issn-print') || getElementText('issn_print') || getElementText('printISSN');
+    const issnOnline = getElementText('issn-online') || getElementText('issn_online') || getElementText('onlineISSN') || getElementText('electronic-issn');
+    const issn = getElementText('issn') || getElementText('ISSN');
+    const isbn = getElementText('isbn') || getElementText('ISBN');
+    
     // Extract year from year text using regex
     const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
     const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
@@ -152,6 +175,9 @@ export const extractPublicationsFromXML = (xmlString: string): Partial<Publicati
       title: title || "Unknown title",
       year,
       source: source || "Unknown source",
+      issnPrint: issnPrint || (issn && !issnOnline ? issn : undefined),
+      issnOnline: issnOnline || undefined,
+      isbn: isbn || undefined,
       checked: false,
       indexed: false,
     });

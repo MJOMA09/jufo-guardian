@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -392,35 +391,27 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                 </div>
               </div>
               
-              {(selectedPublication.issnPrint || selectedPublication.issnOnline) && (
-                <div className="grid grid-cols-2 gap-4">
-                  {selectedPublication.issnPrint && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
-                      <p>{selectedPublication.issnPrint}</p>
-                    </div>
-                  )}
-                  
-                  {selectedPublication.issnOnline && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
-                      <p>{selectedPublication.issnOnline}</p>
-                    </div>
-                  )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
+                  <p>{selectedPublication.issnPrint || '-'}</p>
                 </div>
-              )}
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
+                  <p>{selectedPublication.issnOnline || '-'}</p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
+                <p>{selectedPublication.isbn || '-'}</p>
+              </div>
               
               {selectedPublication.issn && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN</h3>
                   <p>{selectedPublication.issn}</p>
-                </div>
-              )}
-              
-              {selectedPublication.isbn && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
-                  <p>{selectedPublication.isbn}</p>
                 </div>
               )}
               

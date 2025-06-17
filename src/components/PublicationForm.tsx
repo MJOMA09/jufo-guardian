@@ -16,6 +16,9 @@ const PublicationForm: React.FC<PublicationFormProps> = ({ onAddPublication }) =
   const [title, setTitle] = useState("");
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [source, setSource] = useState("");
+  const [issnPrint, setIssnPrint] = useState("");
+  const [issnOnline, setIssnOnline] = useState("");
+  const [isbn, setIsbn] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = (): boolean => {
@@ -42,6 +45,9 @@ const PublicationForm: React.FC<PublicationFormProps> = ({ onAddPublication }) =
         title,
         year,
         source,
+        issnPrint: issnPrint.trim() || undefined,
+        issnOnline: issnOnline.trim() || undefined,
+        isbn: isbn.trim() || undefined,
         jufoLevel: null,
         norwegianLevel: null,
         indexed: false,
@@ -55,6 +61,9 @@ const PublicationForm: React.FC<PublicationFormProps> = ({ onAddPublication }) =
       setTitle("");
       setYear(new Date().getFullYear());
       setSource("");
+      setIssnPrint("");
+      setIssnOnline("");
+      setIsbn("");
     }
   };
 
@@ -129,6 +138,44 @@ const PublicationForm: React.FC<PublicationFormProps> = ({ onAddPublication }) =
             {errors.source && (
               <p className="text-sm text-red-500">{errors.source}</p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="issnPrint" className="font-medium">
+                ISSN (Print)
+              </Label>
+              <Input
+                id="issnPrint"
+                value={issnPrint}
+                onChange={(e) => setIssnPrint(e.target.value)}
+                placeholder="e.g., 1234-5678"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="issnOnline" className="font-medium">
+                ISSN (Online)
+              </Label>
+              <Input
+                id="issnOnline"
+                value={issnOnline}
+                onChange={(e) => setIssnOnline(e.target.value)}
+                placeholder="e.g., 1234-5679"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="isbn" className="font-medium">
+              ISBN
+            </Label>
+            <Input
+              id="isbn"
+              value={isbn}
+              onChange={(e) => setIsbn(e.target.value)}
+              placeholder="e.g., 978-3-16-148410-0"
+            />
           </div>
         </form>
       </CardContent>
