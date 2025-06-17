@@ -51,9 +51,10 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
     
     if (!publication.checked) return "Not checked";
-    if (!publication.indexed) return "Not indexed";
+    if (!publication.indexed && publication.jufoLevel === null) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
     
+    // Show level 0 as "0", and other levels as their numeric value
     return publication.jufoLevel !== null && publication.jufoLevel !== undefined
       ? publication.jufoLevel.toString()
       : "Unknown";
@@ -66,7 +67,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
     
     if (!publication.checked) return "Not checked";
-    if (!publication.indexed) return "N/A";
+    if (!publication.indexed && publication.jufoLevel === null) return "N/A";
     if (publication.evaluated === false) return "N/A";
     
     return publication.norwegianLevel !== null && publication.norwegianLevel !== undefined
@@ -79,6 +80,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
       return <Badge variant="outline" className="bg-gray-100">Pending</Badge>;
     }
     
+    // Use the status from the API response which handles level 0 correctly
     const status = publication.status || (publication.indexed ? 'Indexed' : 'Not Indexed');
     return (
       <Badge 

@@ -4,7 +4,7 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * First checks the imported database, falls back to mock data if not available
+ * Priority: ISSN (print/online) or ISBN first, then source name
  */
 export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
@@ -18,17 +18,55 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     
     // If we have imported data, use that first
     if (hasDatabaseData()) {
-      const result = searchJufoDatabase(source, issnPrint, issnOnline, isbn);
+      // Priority 1: Check by ISSN (print or online) first
+      if (issnPrint || issnOnline) {
+        const result = searchJufoDatabase("", issnPrint, issnOnline, isbn);
+        if (result) {
+          const isIndexed = result.level !== null && result.level > 0;
+          const status = result.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
+          console.log(`JUFO database ISSN match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
+          return {
+            level: result.level,
+            norwegianLevel: result.norwegianLevel,
+            indexed: isIndexed,
+            evaluated: result.evaluated,
+            checked: true,
+            status: status
+          };
+        }
+      }
+      
+      // Priority 2: Check by ISBN if no ISSN match
+      if (isbn) {
+        const result = searchJufoDatabase("", undefined, undefined, isbn);
+        if (result) {
+          const isIndexed = result.level !== null && result.level > 0;
+          const status = result.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
+          console.log(`JUFO database ISBN match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
+          return {
+            level: result.level,
+            norwegianLevel: result.norwegianLevel,
+            indexed: isIndexed,
+            evaluated: result.evaluated,
+            checked: true,
+            status: status
+          };
+        }
+      }
+      
+      // Priority 3: Check by source name if no ISSN/ISBN match
+      const result = searchJufoDatabase(source);
       if (result) {
-        const isIndexed = result.level !== null && result.level !== 0;
-        console.log(`JUFO database match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
+        const isIndexed = result.level !== null && result.level > 0;
+        const status = result.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
+        console.log(`JUFO database source match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
         return {
           level: result.level,
           norwegianLevel: result.norwegianLevel,
           indexed: isIndexed,
           evaluated: result.evaluated,
           checked: true,
-          status: isIndexed ? 'Indexed' : 'Not Indexed'
+          status: status
         };
       } else {
         console.log(`No match found in JUFO database for: ${source}`);
@@ -73,11 +111,12 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     // Return mock data or not indexed response
     if (matchedKey) {
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
-      const isIndexed = mockResult.level !== null && mockResult.level !== 0;
+      const isIndexed = mockResult.level !== null && mockResult.level > 0;
+      const status = mockResult.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
       return { 
         ...mockResult, 
         checked: true,
-        status: isIndexed ? 'Indexed' : 'Not Indexed'
+        status: status
       };
     } else {
       return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };

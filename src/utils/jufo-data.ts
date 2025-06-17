@@ -120,7 +120,7 @@ export const getLatestDatabaseYear = (): number => {
 
 /**
  * Search for a publication in the imported JUFO database
- * Uses multiple strategies to find the best match including ISSN and ISBN
+ * Priority: ISSN/ISBN first, then source name
  */
 export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): JufoData | null => {
   if (!jufoDatabase || jufoDatabase.length === 0) {
@@ -128,8 +128,7 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
     return null;
   }
   
-  const normalizedQuery = source.toLowerCase().trim();
-  console.log(`Searching for: "${normalizedQuery}" with ISSN Print: ${issnPrint}, ISSN Online: ${issnOnline}, ISBN: ${isbn} in database of ${jufoDatabase.length} entries`);
+  console.log(`Searching with priority - ISSN Print: ${issnPrint}, ISSN Online: ${issnOnline}, ISBN: ${isbn}, Source: "${source}"`);
   
   // Filter to latest year's rankings first
   const latestYearEntries = jufoDatabase.filter(entry => 
@@ -138,116 +137,109 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
   
   console.log(`Found ${latestYearEntries.length} entries for latest year ${latestDatabaseYear}`);
   
-  // Try different search strategies in order of precision
-  
-  // Strategy 1: Check for ISSN matches first (most reliable)
+  // Priority 1: Check for ISSN matches first (most reliable)
   if (issnPrint || issnOnline) {
     let match = findIssnMatch(issnPrint || issnOnline || '', latestYearEntries);
     if (match) {
       console.log("Found ISSN match:", match.issn);
       return match;
     }
-  }
-  
-  // Strategy 2: Check for ISBN match
-  if (isbn) {
-    let match = findIsbnMatch(isbn, latestYearEntries);
-    if (match) {
-      console.log("Found ISBN match:", match.issn);
-      return match;
-    }
-  }
-  
-  // Strategy 3: Exact match on name
-  let match = findExactMatch(normalizedQuery, latestYearEntries);
-  if (match) {
-    console.log("Found exact name match:", match.name);
-    return match;
-  }
-  
-  // Strategy 4: Check for normalized name match (removing special characters & punctuation)
-  match = findNormalizedMatch(normalizedQuery, latestYearEntries);
-  if (match) {
-    console.log("Found normalized match:", match.name);
-    return match;
-  }
-  
-  // Strategy 5: Check if the publication name is contained within any database entry
-  match = findContainsMatch(normalizedQuery, latestYearEntries);
-  if (match) {
-    console.log("Found contains match:", match.name);
-    return match;
-  }
-  
-  // Strategy 6: Check if any database entry is contained within the publication name
-  match = findReversedContainsMatch(normalizedQuery, latestYearEntries);
-  if (match) {
-    console.log("Found reversed contains match:", match.name);
-    return match;
-  }
-  
-  // Strategy 7: Try a tokenized word match approach
-  match = findTokenMatch(normalizedQuery, latestYearEntries);
-  if (match) {
-    console.log("Found token match:", match.name);
-    return match;
-  }
-  
-  // If no match in latest year data, fall back to the full database with the same strategies
-  console.log("No match in latest year data, trying full database");
-  
-  // Repeat all strategies with full database
-  if (issnPrint || issnOnline) {
-    let match = findIssnMatch(issnPrint || issnOnline || '', jufoDatabase);
+    
+    // If no match in latest year, try full database
+    match = findIssnMatch(issnPrint || issnOnline || '', jufoDatabase);
     if (match) {
       console.log("Found ISSN match in full database:", match.issn);
       return match;
     }
   }
   
+  // Priority 2: Check for ISBN match
   if (isbn) {
-    let match = findIsbnMatch(isbn, jufoDatabase);
+    let match = findIsbnMatch(isbn, latestYearEntries);
+    if (match) {
+      console.log("Found ISBN match:", match.issn);
+      return match;
+    }
+    
+    // If no match in latest year, try full database
+    match = findIsbnMatch(isbn, jufoDatabase);
     if (match) {
       console.log("Found ISBN match in full database:", match.issn);
       return match;
     }
   }
   
-  match = findExactMatch(normalizedQuery, jufoDatabase);
-  if (match) {
-    console.log("Found exact name match in full database:", match.name);
-    return match;
+  // Priority 3: Only check source name if provided and no ISSN/ISBN matches found
+  if (source && source.trim() !== "") {
+    const normalizedQuery = source.toLowerCase().trim();
+    console.log(`No ISSN/ISBN match found, checking source: "${normalizedQuery}"`);
+    
+    // Try different search strategies for source name
+    let match = findExactMatch(normalizedQuery, latestYearEntries);
+    if (match) {
+      console.log("Found exact name match:", match.name);
+      return match;
+    }
+    
+    match = findNormalizedMatch(normalizedQuery, latestYearEntries);
+    if (match) {
+      console.log("Found normalized match:", match.name);
+      return match;
+    }
+    
+    match = findContainsMatch(normalizedQuery, latestYearEntries);
+    if (match) {
+      console.log("Found contains match:", match.name);
+      return match;
+    }
+    
+    match = findReversedContainsMatch(normalizedQuery, latestYearEntries);
+    if (match) {
+      console.log("Found reversed contains match:", match.name);
+      return match;
+    }
+    
+    match = findTokenMatch(normalizedQuery, latestYearEntries);
+    if (match) {
+      console.log("Found token match:", match.name);
+      return match;
+    }
+    
+    // If no match in latest year data, try full database
+    console.log("No match in latest year data, trying full database for source");
+    
+    match = findExactMatch(normalizedQuery, jufoDatabase);
+    if (match) {
+      console.log("Found exact name match in full database:", match.name);
+      return match;
+    }
+    
+    match = findNormalizedMatch(normalizedQuery, jufoDatabase);
+    if (match) {
+      console.log("Found normalized match in full database:", match.name);
+      return match;
+    }
+    
+    match = findContainsMatch(normalizedQuery, jufoDatabase);
+    if (match) {
+      console.log("Found contains match in full database:", match.name);
+      return match;
+    }
+    
+    match = findReversedContainsMatch(normalizedQuery, jufoDatabase);
+    if (match) {
+      console.log("Found reversed contains match in full database:", match.name);
+      return match;
+    }
+    
+    match = findTokenMatch(normalizedQuery, jufoDatabase);
+    if (match) {
+      console.log("Found token match in full database:", match.name);
+      return match;
+    }
   }
   
-  // Strategy 3: Check for normalized name match (removing special characters)
-  match = findNormalizedMatch(normalizedQuery, jufoDatabase);
-  if (match) {
-    console.log("Found normalized match in full database:", match.name);
-    return match;
-  }
-  
-  // Strategy 4: Check if the publication name is contained within any database entry
-  match = findContainsMatch(normalizedQuery, jufoDatabase);
-  if (match) {
-    console.log("Found contains match in full database:", match.name);
-    return match;
-  }
-  
-  // Strategy 5: Check if any database entry is contained within the publication name
-  match = findReversedContainsMatch(normalizedQuery, jufoDatabase);
-  if (match) {
-    console.log("Found reversed contains match in full database:", match.name);
-    return match;
-  }
-  
-  // Strategy 6: Try a tokenized word match approach
-  match = findTokenMatch(normalizedQuery, jufoDatabase);
-  if (match) {
-    console.log("Found token match in full database:", match.name);
-    return match;
-  }
-  
-  console.log("No match found for:", normalizedQuery);
+  console.log("No match found for any criteria");
   return null;
 };
 
