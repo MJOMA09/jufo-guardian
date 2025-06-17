@@ -4,6 +4,74 @@ import { v4 as uuidv4 } from "uuid";
 import * as XLSX from 'xlsx';
 
 /**
+ * Extract and normalize ISSN from text (handles various formats)
+ */
+const extractISSN = (text: string): { print?: string, online?: string } => {
+  const result: { print?: string, online?: string } = {};
+  
+  // Look for ISSN patterns with various labels
+  const printPatterns = [
+    /ISSN[\s]*(?:Print|print|PRINT)?[\s:]*(\d{4}-\d{3}[\dXx])/gi,
+    /Print[\s]*ISSN[\s:]*(\d{4}-\d{3}[\dXx])/gi,
+    /ISSN[\s]*\(Print\)[\s:]*(\d{4}-\d{3}[\dXx])/gi
+  ];
+  
+  const onlinePatterns = [
+    /ISSN[\s]*(?:Online|online|ONLINE|Electronic|electronic|E-)[\s:]*(\d{4}-\d{3}[\dXx])/gi,
+    /Online[\s]*ISSN[\s:]*(\d{4}-\d{3}[\dXx])/gi,
+    /Electronic[\s]*ISSN[\s:]*(\d{4}-\d{3}[\dXx])/gi,
+    /E-ISSN[\s:]*(\d{4}-\d{3}[\dXx])/gi
+  ];
+  
+  const generalISSNPattern = /ISSN[\s:]*(\d{4}-\d{3}[\dXx])/gi;
+  
+  // Check for print ISSN
+  for (const pattern of printPatterns) {
+    const match = pattern.exec(text);
+    if (match) {
+      result.print = match[1];
+      break;
+    }
+  }
+  
+  // Check for online ISSN
+  for (const pattern of onlinePatterns) {
+    const match = pattern.exec(text);
+    if (match) {
+      result.online = match[1];
+      break;
+    }
+  }
+  
+  // If no specific print/online found, look for general ISSN
+  if (!result.print && !result.online) {
+    const matches = [];
+    let match;
+    while ((match = generalISSNPattern.exec(text)) !== null) {
+      matches.push(match[1]);
+    }
+    
+    if (matches.length === 1) {
+      result.print = matches[0];
+    } else if (matches.length > 1) {
+      result.print = matches[0];
+      result.online = matches[1];
+    }
+  }
+  
+  return result;
+};
+
+/**
+ * Extract ISBN from text
+ */
+const extractISBN = (text: string): string | undefined => {
+  const isbnPattern = /ISBN[\s:]*(\d{3}-\d{1,5}-\d{1,7}-\d{1,7}-[\dXx]|\d{10}|\d{13})/i;
+  const match = text.match(isbnPattern);
+  return match ? match[1] : undefined;
+};
+
+/**
  * Extract publications from text content
  * Uses simplified extraction logic for text-based documents
  */
@@ -23,8 +91,8 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
         const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
         
         // Extract ISSN and ISBN patterns
-        const issnMatch = line.match(/ISSN[\s:]*(\d{4}-\d{3}[\dXx])/i);
-        const isbnMatch = line.match(/ISBN[\s:]*(\d{3}-\d{1,5}-\d{1,7}-\d{1,7}-[\dXx]|\d{10}|\d{13})/i);
+        const issnData = extractISSN(line);
+        const isbn = extractISBN(line);
         
         // Attempt to identify title and source
         const titleIndex = line.indexOf('"');
@@ -39,7 +107,6 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
         } else {
           // Fallback if no quotes for title
           const authorParts = parts[0].split(',');
-          const authors = authorParts[0].trim();
           title = parts.slice(1, -1).join('.').trim();
           source = lastPart.replace(/\b(19|20)\d{2}\b/, '').trim();
         }
@@ -50,8 +117,9 @@ export const extractPublicationsFromText = (text: string): Partial<Publication>[
           title: title || "Unknown title",
           year,
           source: source || "Unknown source",
-          issnPrint: issnMatch ? issnMatch[1] : undefined,
-          isbn: isbnMatch ? isbnMatch[1] : undefined,
+          issnPrint: issnData.print,
+          issnOnline: issnData.online,
+          isbn: isbn,
           checked: false,
           indexed: false,
         });
@@ -79,15 +147,21 @@ export const extractPublicationsFromSpreadsheet = (data: ArrayBuffer): Partial<P
     const title = row.Title || row.title || row.Name || row.name || '';
     const year = row.Year || row.year || row.Date || row.date || new Date().getFullYear();
     const source = row.Source || row.source || row.Journal || row.journal || 
-                  row['Publication'] || row['Journal/Series'] || '';
+                  row['Publication'] || row['Journal/Series'] || row['Journal Name'] || 
+                  row['journal_name'] || row['Publication Name'] || '';
     
-    // Extract ISSN and ISBN fields with various possible column names
+    // Enhanced ISSN and ISBN field extraction with more column name variations
     const issnPrint = row['ISSN Print'] || row['ISSN_Print'] || row.issnPrint || 
-                     row['Print ISSN'] || row.printISSN || '';
+                     row['Print ISSN'] || row.printISSN || row['ISSN-P'] || 
+                     row['ISSN (Print)'] || row['Print_ISSN'] || '';
+                     
     const issnOnline = row['ISSN Online'] || row['ISSN_Online'] || row.issnOnline || 
-                      row['Online ISSN'] || row.onlineISSN || row['Electronic ISSN'] || '';
+                      row['Online ISSN'] || row.onlineISSN || row['Electronic ISSN'] || 
+                      row['E-ISSN'] || row['ISSN-E'] || row['ISSN (Online)'] || 
+                      row['Online_ISSN'] || row['Electronic_ISSN'] || '';
+                      
     const issn = row.ISSN || row.issn || row.ISSNL || '';
-    const isbn = row.ISBN || row.isbn || '';
+    const isbn = row.ISBN || row.isbn || row['ISBN-13'] || row['ISBN-10'] || '';
     
     if (title) {
       publications.push({
@@ -159,11 +233,19 @@ export const extractPublicationsFromXML = (xmlString: string): Partial<Publicati
                   getElementText('secondary_title') ||
                   getElementText('secondaryTitle');
     
-    // Extract ISSN and ISBN fields
-    const issnPrint = getElementText('issn-print') || getElementText('issn_print') || getElementText('printISSN');
-    const issnOnline = getElementText('issn-online') || getElementText('issn_online') || getElementText('onlineISSN') || getElementText('electronic-issn');
+    // Enhanced ISSN and ISBN field extraction with more XML tag variations
+    const issnPrint = getElementText('issn-print') || getElementText('issn_print') || 
+                     getElementText('printISSN') || getElementText('print-issn') ||
+                     getElementText('ISSN-P') || getElementText('issn-p');
+                     
+    const issnOnline = getElementText('issn-online') || getElementText('issn_online') || 
+                      getElementText('onlineISSN') || getElementText('electronic-issn') ||
+                      getElementText('e-issn') || getElementText('ISSN-E') || 
+                      getElementText('issn-e') || getElementText('online-issn');
+                      
     const issn = getElementText('issn') || getElementText('ISSN');
-    const isbn = getElementText('isbn') || getElementText('ISBN');
+    const isbn = getElementText('isbn') || getElementText('ISBN') || 
+                getElementText('isbn-13') || getElementText('isbn-10');
     
     // Extract year from year text using regex
     const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,9 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                       <TableHead>Title</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Source</TableHead>
+                      <TableHead>ISSN Print</TableHead>
+                      <TableHead>ISSN Online</TableHead>
+                      <TableHead>ISBN</TableHead>
                       <TableHead>JUFO Level</TableHead>
                       <TableHead>Norwegian Level</TableHead>
                       <TableHead>Status</TableHead>
@@ -227,7 +231,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                   <TableBody>
                     {currentPublications.map((pub) => (
                       <TableRow key={pub.id}>
-                        <TableCell className="font-medium max-w-[200px] truncate">
+                        <TableCell className="font-medium max-w-[150px] truncate">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -252,10 +256,19 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                         </TableCell>
                         <TableCell>{pub.year}</TableCell>
                         <TableCell 
-                          className="max-w-[200px] truncate cursor-pointer hover:underline" 
+                          className="max-w-[150px] truncate cursor-pointer hover:underline" 
                           onClick={() => handleViewDetails(pub)}
                         >
                           {pub.source}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">
+                          {pub.issnPrint || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">
+                          {pub.issnOnline || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">
+                          {pub.isbn || '-'}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -394,24 +407,24 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
-                  <p>{selectedPublication.issnPrint || '-'}</p>
+                  <p className="font-mono text-sm">{selectedPublication.issnPrint || '-'}</p>
                 </div>
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
-                  <p>{selectedPublication.issnOnline || '-'}</p>
+                  <p className="font-mono text-sm">{selectedPublication.issnOnline || '-'}</p>
                 </div>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
-                <p>{selectedPublication.isbn || '-'}</p>
+                <p className="font-mono text-sm">{selectedPublication.isbn || '-'}</p>
               </div>
               
               {selectedPublication.issn && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN</h3>
-                  <p>{selectedPublication.issn}</p>
+                  <p className="font-mono text-sm">{selectedPublication.issn}</p>
                 </div>
               )}
               
