@@ -59,7 +59,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (!publication.indexed && publication.jufoLevel === null) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
     
-    // Show level 0 as "0", and other levels as their numeric value
+    // Show ALL levels including 0 - they are all valid JUFO levels
     return publication.jufoLevel !== null && publication.jufoLevel !== undefined
       ? publication.jufoLevel.toString()
       : "Unknown";
@@ -75,6 +75,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (!publication.indexed && publication.jufoLevel === null) return "N/A";
     if (publication.evaluated === false) return "N/A";
     
+    // Show Norwegian level if it exists, including 0
     return publication.norwegianLevel !== null && publication.norwegianLevel !== undefined
       ? publication.norwegianLevel.toString()
       : "N/A";
@@ -85,8 +86,8 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
       return <Badge variant="outline" className="bg-gray-100">Pending</Badge>;
     }
     
-    // Use the status from the API response which handles level 0 correctly
-    const status = publication.status || (publication.indexed ? 'Indexed' : 'Not Indexed');
+    // Use the status from the API response which correctly handles indexing logic
+    const status = publication.status || 'Not Indexed';
     return (
       <Badge 
         variant="outline" 
@@ -302,7 +303,9 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {getNorwegianLevelText(pub)}
+                          <span className="text-sm">
+                            {getNorwegianLevelText(pub)}
+                          </span>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(pub)}

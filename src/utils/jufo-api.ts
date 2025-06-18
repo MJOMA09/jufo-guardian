@@ -18,62 +18,63 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     
     // If we have imported data, use that first
     if (hasDatabaseData()) {
+      let foundResult = null;
+      
       // Priority 1: Check by ISSN (print or online) first
       if (issnPrint || issnOnline) {
-        const result = searchJufoDatabase("", issnPrint, issnOnline, isbn);
-        if (result) {
-          const isIndexed = result.level !== null && result.level > 0;
-          const status = result.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
-          console.log(`JUFO database ISSN match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
-          return {
-            level: result.level,
-            norwegianLevel: result.norwegianLevel,
-            indexed: isIndexed,
-            evaluated: result.evaluated,
-            checked: true,
-            status: status
-          };
+        foundResult = searchJufoDatabase("", issnPrint, issnOnline, isbn);
+        if (foundResult) {
+          console.log(`JUFO database ISSN match found: Level ${foundResult.level}, Norwegian Level ${foundResult.norwegianLevel !== null ? foundResult.norwegianLevel : 'N/A'}`);
         }
       }
       
       // Priority 2: Check by ISBN if no ISSN match
-      if (isbn) {
-        const result = searchJufoDatabase("", undefined, undefined, isbn);
-        if (result) {
-          const isIndexed = result.level !== null && result.level > 0;
-          const status = result.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
-          console.log(`JUFO database ISBN match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
-          return {
-            level: result.level,
-            norwegianLevel: result.norwegianLevel,
-            indexed: isIndexed,
-            evaluated: result.evaluated,
-            checked: true,
-            status: status
-          };
+      if (!foundResult && isbn) {
+        foundResult = searchJufoDatabase("", undefined, undefined, isbn);
+        if (foundResult) {
+          console.log(`JUFO database ISBN match found: Level ${foundResult.level}, Norwegian Level ${foundResult.norwegianLevel !== null ? foundResult.norwegianLevel : 'N/A'}`);
         }
       }
       
       // Priority 3: Check by source name if no ISSN/ISBN match
-      const result = searchJufoDatabase(source);
-      if (result) {
-        const isIndexed = result.level !== null && result.level > 0;
-        const status = result.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
-        console.log(`JUFO database source match found: Level ${result.level}, Norwegian Level ${result.norwegianLevel !== null ? result.norwegianLevel : 'N/A'}`);
+      if (!foundResult && source) {
+        foundResult = searchJufoDatabase(source);
+        if (foundResult) {
+          console.log(`JUFO database source match found: Level ${foundResult.level}, Norwegian Level ${foundResult.norwegianLevel !== null ? foundResult.norwegianLevel : 'N/A'}`);
+        }
+      }
+      
+      // Process the result if found
+      if (foundResult) {
+        // Determine indexing status: Indexed if level is 1, 2, or 3
+        const isIndexed = foundResult.level !== null && foundResult.level >= 1;
+        const status = isIndexed ? 'Indexed' : 'Not Indexed';
+        
+        console.log(`Final result: Level ${foundResult.level}, Indexed: ${isIndexed}, Status: ${status}`);
+        
         return {
-          level: result.level,
-          norwegianLevel: result.norwegianLevel,
+          level: foundResult.level,
+          norwegianLevel: foundResult.norwegianLevel,
           indexed: isIndexed,
-          evaluated: result.evaluated,
+          evaluated: foundResult.evaluated,
           checked: true,
           status: status
         };
       } else {
         console.log(`No match found in JUFO database for: ${source}`);
+        // No match found in database - mark as Not Indexed
+        return { 
+          level: null, 
+          norwegianLevel: null, 
+          indexed: false, 
+          evaluated: false, 
+          checked: true, 
+          status: 'Not Indexed' 
+        };
       }
     }
     
-    // Fall back to mock database if no imported data or no match found
+    // Fall back to mock database if no imported data
     const normalizedSource = source.toLowerCase().trim();
     console.log(`Falling back to mock database for: ${normalizedSource}`);
     
@@ -87,8 +88,8 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       "journal of informetrics": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
       "information processing & management": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true, evaluated: true },
-      "predatory journal": { level: 0, norwegianLevel: null, indexed: true, evaluated: true },
-      "new journal": { level: null, norwegianLevel: null, indexed: true, evaluated: false },
+      "predatory journal": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
+      "new journal": { level: null, norwegianLevel: null, indexed: false, evaluated: false },
       "management learning": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human-computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human–computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
@@ -111,10 +112,13 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     // Return mock data or not indexed response
     if (matchedKey) {
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
-      const isIndexed = mockResult.level !== null && mockResult.level > 0;
-      const status = mockResult.level === 0 ? 'Not Indexed' : (isIndexed ? 'Indexed' : 'Not Indexed');
+      // Apply the same indexing logic: Indexed if level is 1, 2, or 3
+      const isIndexed = mockResult.level !== null && mockResult.level >= 1;
+      const status = isIndexed ? 'Indexed' : 'Not Indexed';
+      
       return { 
-        ...mockResult, 
+        ...mockResult,
+        indexed: isIndexed,
         checked: true,
         status: status
       };
