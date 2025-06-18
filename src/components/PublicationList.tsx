@@ -43,9 +43,10 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     setCurrentPage(1);
   }, [publications.length, filterLevel, sortBy]);
 
-  const getJufoLevelColor = (level: number | null | undefined, evaluated: boolean = true): string => {
+  const getJufoLevelColor = (level: number | string | null | undefined, evaluated: boolean = true): string => {
     if (!evaluated) return "bg-jufo-unknown";
     if (level === null || level === undefined) return "bg-jufo-unknown";
+    if (level === "Absent") return "bg-gray-200";
     return `bg-jufo-${level}`;
   };
 
@@ -56,10 +57,11 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
     
     if (!publication.checked) return "Not checked";
+    if (publication.jufoLevel === "Absent") return "Absent";
     if (!publication.indexed && publication.jufoLevel === null) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
     
-    // Show ALL levels including 0 - they are all valid JUFO levels
+    // Show ALL levels including 0 and "Absent" - they are all valid JUFO levels
     return publication.jufoLevel !== null && publication.jufoLevel !== undefined
       ? publication.jufoLevel.toString()
       : "Unknown";
@@ -72,6 +74,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
     
     if (!publication.checked) return "Not checked";
+    if (publication.jufoLevel === "Absent") return "N/A";
     if (!publication.indexed && publication.jufoLevel === null) return "N/A";
     if (publication.evaluated === false) return "N/A";
     
@@ -119,6 +122,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (filterLevel === "notIndexed") return !pub.indexed;
     if (filterLevel === "pending") return !pub.checked;
     if (filterLevel === "notEvaluated") return pub.evaluated === false;
+    if (filterLevel === "absent") return pub.jufoLevel === "Absent";
     return pub.jufoLevel?.toString() === filterLevel;
   });
 
@@ -129,9 +133,9 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
       case "yearDesc":
         return b.year - a.year;
       case "jufoLevel":
-        const aLevel = a.jufoLevel ?? -1;
-        const bLevel = b.jufoLevel ?? -1;
-        return bLevel - aLevel;
+        const aLevel = a.jufoLevel === "Absent" ? -2 : (a.jufoLevel ?? -1);
+        const bLevel = b.jufoLevel === "Absent" ? -2 : (b.jufoLevel ?? -1);
+        return Number(bLevel) - Number(aLevel);
       case "source":
         return a.source.localeCompare(b.source);
       default:
@@ -200,6 +204,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                   <SelectItem value="2">JUFO Level 2</SelectItem>
                   <SelectItem value="1">JUFO Level 1</SelectItem>
                   <SelectItem value="0">JUFO Level 0</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
                   <SelectItem value="notEvaluated">Not Evaluated</SelectItem>
                   <SelectItem value="notIndexed">Not Indexed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>

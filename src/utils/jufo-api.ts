@@ -13,7 +13,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     // Check if source is empty or contains "unknown" text
     if (!source || source.trim() === "" || source.toLowerCase().includes("unknown")) {
       console.log("Unknown or empty source detected");
-      return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
+      return { level: "Absent", norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
     }
     
     // If we have imported data, use that first
@@ -62,9 +62,9 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         };
       } else {
         console.log(`No match found in JUFO database for: ${source}`);
-        // No match found in database - mark as Not Indexed
+        // No match found in database - mark as Absent
         return { 
-          level: null, 
+          level: "Absent", 
           norwegianLevel: null, 
           indexed: false, 
           evaluated: false, 
@@ -89,7 +89,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       "information processing & management": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true, evaluated: true },
       "predatory journal": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
-      "new journal": { level: null, norwegianLevel: null, indexed: false, evaluated: false },
+      "new journal": { level: "Absent", norwegianLevel: null, indexed: false, evaluated: false },
       "management learning": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human-computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human–computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
@@ -113,7 +113,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     if (matchedKey) {
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
       // Apply the same indexing logic: Indexed if level is 1, 2, or 3
-      const isIndexed = mockResult.level !== null && mockResult.level >= 1;
+      const isIndexed = mockResult.level !== null && mockResult.level !== "Absent" && mockResult.level >= 1;
       const status = isIndexed ? 'Indexed' : 'Not Indexed';
       
       return { 
@@ -123,10 +123,10 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         status: status
       };
     } else {
-      return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
+      return { level: "Absent", norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
     }
   } catch (error) {
     console.error("Error checking JUFO quality:", error);
-    return { level: null, norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
+    return { level: "Absent", norwegianLevel: null, indexed: false, evaluated: false, checked: true, status: 'Not Indexed' };
   }
 };
