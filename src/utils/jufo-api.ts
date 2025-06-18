@@ -47,7 +47,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       // Process the result if found
       if (foundResult) {
         // Determine indexing status: Indexed if level is 1, 2, or 3
-        const isIndexed = foundResult.level !== null && foundResult.level >= 1;
+        const isIndexed = foundResult.level !== null && typeof foundResult.level === 'number' && foundResult.level >= 1;
         const status = isIndexed ? 'Indexed' : 'Not Indexed';
         
         console.log(`Final result: Level ${foundResult.level}, Indexed: ${isIndexed}, Status: ${status}`);
@@ -113,7 +113,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     if (matchedKey) {
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
       // Apply the same indexing logic: Indexed if level is 1, 2, or 3
-      const isIndexed = mockResult.level !== null && mockResult.level !== "Absent" && mockResult.level >= 1;
+      const isIndexed = mockResult.level !== null && mockResult.level !== "Absent" && typeof mockResult.level === 'number' && mockResult.level >= 1;
       const status = isIndexed ? 'Indexed' : 'Not Indexed';
       
       return { 
