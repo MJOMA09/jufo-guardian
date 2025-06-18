@@ -64,9 +64,23 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       
       // Process the result if found
       if (foundResult) {
-        // Determine indexing status: Indexed if level is 1, 2, or 3
-        const isIndexed = foundResult.level !== null && typeof foundResult.level === 'number' && foundResult.level >= 1;
-        const status = isIndexed ? 'Indexed' : 'Not Indexed';
+        // Correct indexing status logic:
+        // - Level 1, 2, or 3: Indexed
+        // - Level 0: Not Indexed (but still in JUFO database)
+        // - Absent: Not in database at all
+        
+        let isIndexed = false;
+        let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
+        
+        if (foundResult.level !== null && typeof foundResult.level === 'number') {
+          if (foundResult.level >= 1 && foundResult.level <= 3) {
+            isIndexed = true;
+            status = 'Indexed';
+          } else if (foundResult.level === 0) {
+            isIndexed = false;
+            status = 'Not Indexed';
+          }
+        }
         
         console.log(`✅ FINAL RESULT: Level ${foundResult.level}, Indexed: ${isIndexed}, Status: ${status}`);
         
@@ -135,9 +149,20 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     // Return mock data or not indexed response
     if (matchedKey) {
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
-      // Apply the same indexing logic: Indexed if level is 1, 2, or 3
-      const isIndexed = mockResult.level !== null && mockResult.level !== "Absent" && typeof mockResult.level === 'number' && mockResult.level >= 1;
-      const status = isIndexed ? 'Indexed' : 'Not Indexed';
+      
+      // Apply correct indexing logic for mock data
+      let isIndexed = false;
+      let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
+      
+      if (mockResult.level !== null && mockResult.level !== "Absent" && typeof mockResult.level === 'number') {
+        if (mockResult.level >= 1 && mockResult.level <= 3) {
+          isIndexed = true;
+          status = 'Indexed';
+        } else if (mockResult.level === 0) {
+          isIndexed = false;
+          status = 'Not Indexed';
+        }
+      }
       
       console.log(`✅ Mock database match: ${matchedKey} -> Level: ${mockResult.level}, Status: ${status}`);
       
