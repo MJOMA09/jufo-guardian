@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -101,9 +100,11 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     );
   };
 
-  // Enhanced ISSN/ISBN display functions
-  const displayISSN = (issn: string | undefined): string => {
-    if (!issn) return '-';
+  // Enhanced ISSN/ISBN display functions - ONLY show if publication is checked and has valid match
+  const displayISSN = (issn: string | undefined, publication: Publication): string => {
+    // Only show ISSN if publication has been checked and found in JUFO database
+    if (!publication.checked || publication.jufoLevel === "Absent" || !issn) return '-';
+    
     // Ensure proper ISSN format (XXXX-XXXX)
     const cleaned = issn.replace(/[^0-9X]/gi, '');
     if (cleaned.length === 8) {
@@ -112,8 +113,9 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     return issn; // Return as-is if not standard format
   };
 
-  const displayISBN = (isbn: string | undefined): string => {
-    if (!isbn) return '-';
+  const displayISBN = (isbn: string | undefined, publication: Publication): string => {
+    // Only show ISBN if publication has been checked and found in JUFO database
+    if (!publication.checked || publication.jufoLevel === "Absent" || !isbn) return '-';
     return isbn;
   };
 
@@ -291,13 +293,13 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                           {pub.source}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayISSN(pub.issnPrint)}
+                          {displayISSN(pub.issnPrint, pub)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayISSN(pub.issnOnline)}
+                          {displayISSN(pub.issnOnline, pub)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayISBN(pub.isbn)}
+                          {displayISBN(pub.isbn, pub)}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -449,18 +451,18 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
-                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnPrint)}</p>
+                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnPrint, selectedPublication)}</p>
                 </div>
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
-                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnOnline)}</p>
+                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnOnline, selectedPublication)}</p>
                 </div>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
-                <p className="font-mono text-sm">{displayISBN(selectedPublication.isbn)}</p>
+                <p className="font-mono text-sm">{displayISBN(selectedPublication.isbn, selectedPublication)}</p>
               </div>
               
               {selectedPublication.issn && (

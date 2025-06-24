@@ -35,27 +35,27 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       let foundResult = null;
       
       // Enhanced search with multiple attempts for better recall
-      // Priority 1: Check by ISSN (print or online) first
+      // Priority 1: Check by ISSN (print or online) first - EXACT matching only
       if (issnPrint || issnOnline) {
-        console.log("Searching by ISSN...");
+        console.log("Searching by ISSN with strict matching...");
         foundResult = searchJufoDatabase("", issnPrint, issnOnline, isbn);
         if (foundResult) {
           console.log(`✅ JUFO database ISSN match found: Level ${foundResult.level}, Norwegian Level ${foundResult.norwegianLevel !== null ? foundResult.norwegianLevel : 'N/A'}`);
         }
       }
       
-      // Priority 2: Check by ISBN if no ISSN match
+      // Priority 2: Check by ISBN if no ISSN match - EXACT matching only
       if (!foundResult && isbn) {
-        console.log("Searching by ISBN...");
+        console.log("Searching by ISBN with strict matching...");
         foundResult = searchJufoDatabase("", undefined, undefined, isbn);
         if (foundResult) {
           console.log(`✅ JUFO database ISBN match found: Level ${foundResult.level}, Norwegian Level ${foundResult.norwegianLevel !== null ? foundResult.norwegianLevel : 'N/A'}`);
         }
       }
       
-      // Priority 3: Check by source name if no ISSN/ISBN match
+      // Priority 3: Check by source name if no ISSN/ISBN match - EXACT matching only
       if (!foundResult && source) {
-        console.log("Searching by source name...");
+        console.log("Searching by source name with strict matching...");
         foundResult = searchJufoDatabase(source);
         if (foundResult) {
           console.log(`✅ JUFO database source match found: Level ${foundResult.level}, Norwegian Level ${foundResult.norwegianLevel !== null ? foundResult.norwegianLevel : 'N/A'}`);
@@ -72,13 +72,15 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         let isIndexed = false;
         let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
         
-        if (foundResult.level !== null && typeof foundResult.level === 'number') {
-          if (foundResult.level >= 1 && foundResult.level <= 3) {
-            isIndexed = true;
-            status = 'Indexed';
-          } else if (foundResult.level === 0) {
-            isIndexed = false;
-            status = 'Not Indexed';
+        if (foundResult.level !== null && foundResult.level !== undefined && foundResult.level !== "Absent") {
+          if (typeof foundResult.level === 'number') {
+            if (foundResult.level >= 1 && foundResult.level <= 3) {
+              isIndexed = true;
+              status = 'Indexed';
+            } else if (foundResult.level === 0) {
+              isIndexed = false;
+              status = 'Not Indexed';
+            }
           }
         }
         

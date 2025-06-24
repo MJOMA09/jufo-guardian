@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { JufoData } from "@/types";
 
@@ -120,7 +119,7 @@ export const getLatestDatabaseYear = (): number => {
 };
 
 /**
- * Advanced ISSN normalization with multiple format support
+ * Advanced ISSN normalization - STRICT format validation
  */
 const normalizeISSN = (issn: string): string => {
   if (!issn) return '';
@@ -128,22 +127,22 @@ const normalizeISSN = (issn: string): string => {
   // Remove all non-alphanumeric characters except X
   const cleaned = issn.replace(/[^0-9X]/gi, '').toUpperCase();
   
-  // Standard ISSN should be 8 characters (7 digits + check digit which can be X)
+  // Standard ISSN must be exactly 8 characters (7 digits + check digit which can be X)
   if (cleaned.length === 8) {
     return cleaned;
   }
   
-  // Handle 7-character ISSNs (missing leading zero)
-  if (cleaned.length === 7) {
+  // Handle 7-character ISSNs (missing leading zero) ONLY if valid pattern
+  if (cleaned.length === 7 && /^\d{7}[0-9X]$/i.test(cleaned)) {
     return '0' + cleaned;
   }
   
-  // Return original if length is completely off
-  return cleaned.length >= 6 ? cleaned : '';
+  console.warn(`Invalid ISSN format rejected: ${issn} -> ${cleaned} (length: ${cleaned.length})`);
+  return ''; // Return empty string for invalid ISSNs
 };
 
 /**
- * Enhanced ISSN matching with multiple strategies
+ * STRICT ISSN matching - exact match only for high accuracy
  */
 const issnMatches = (issn1: string, issn2: string): boolean => {
   if (!issn1 || !issn2) return false;
@@ -151,44 +150,37 @@ const issnMatches = (issn1: string, issn2: string): boolean => {
   const normalized1 = normalizeISSN(issn1);
   const normalized2 = normalizeISSN(issn2);
   
-  // Exact match
-  if (normalized1 === normalized2 && normalized1.length >= 7) {
-    return true;
-  }
-  
-  // Partial match for cases where data might be incomplete
-  if (normalized1.length >= 6 && normalized2.length >= 6) {
-    const shorter = normalized1.length < normalized2.length ? normalized1 : normalized2;
-    const longer = normalized1.length >= normalized2.length ? normalized1 : normalized2;
-    return longer.includes(shorter);
+  // Only exact matches for highest accuracy
+  if (normalized1 && normalized2 && normalized1.length === 8 && normalized2.length === 8) {
+    const match = normalized1 === normalized2;
+    if (match) {
+      console.log(`✅ STRICT ISSN MATCH: ${issn1} = ${issn2} (normalized: ${normalized1})`);
+    }
+    return match;
   }
   
   return false;
 };
 
 /**
- * Advanced ISBN normalization
+ * Advanced ISBN normalization - STRICT format validation
  */
 const normalizeISBN = (isbn: string): string => {
   if (!isbn) return '';
   
   const cleaned = isbn.replace(/[^0-9X]/gi, '').toUpperCase();
   
-  // ISBN-10 (10 digits) or ISBN-13 (13 digits)
+  // Only accept valid ISBN lengths
   if (cleaned.length === 10 || cleaned.length === 13) {
     return cleaned;
   }
   
-  // Handle close matches
-  if (cleaned.length >= 9 && cleaned.length <= 14) {
-    return cleaned;
-  }
-  
+  console.warn(`Invalid ISBN format rejected: ${isbn} -> ${cleaned} (length: ${cleaned.length})`);
   return '';
 };
 
 /**
- * Enhanced ISBN matching
+ * STRICT ISBN matching - exact match only for high accuracy
  */
 const isbnMatches = (isbn1: string, isbn2: string): boolean => {
   if (!isbn1 || !isbn2) return false;
@@ -196,39 +188,68 @@ const isbnMatches = (isbn1: string, isbn2: string): boolean => {
   const normalized1 = normalizeISBN(isbn1);
   const normalized2 = normalizeISBN(isbn2);
   
-  // Exact match
-  if (normalized1 === normalized2 && normalized1.length >= 9) {
-    return true;
-  }
-  
-  // Handle ISBN-10 to ISBN-13 conversion patterns
-  if ((normalized1.length === 10 && normalized2.length === 13) || 
-      (normalized1.length === 13 && normalized2.length === 10)) {
-    const shorter = normalized1.length < normalized2.length ? normalized1 : normalized2;
-    const longer = normalized1.length >= normalized2.length ? normalized1 : normalized2;
-    // Check if the shorter ISBN is contained in the longer one
-    return longer.includes(shorter);
+  // Only exact matches for highest accuracy
+  if (normalized1 && normalized2 && 
+      (normalized1.length === 10 || normalized1.length === 13) &&
+      (normalized2.length === 10 || normalized2.length === 13)) {
+    
+    // Direct comparison
+    if (normalized1 === normalized2) {
+      console.log(`✅ STRICT ISBN MATCH: ${isbn1} = ${isbn2} (normalized: ${normalized1})`);
+      return true;
+    }
+    
+    // Handle ISBN-10 to ISBN-13 conversion (978 prefix)
+    if (normalized1.length === 10 && normalized2.length === 13) {
+      const isbn13from10 = '978' + normalized1.substring(0, 9);
+      if (normalized2.startsWith(isbn13from10)) {
+        console.log(`✅ STRICT ISBN CONVERSION MATCH: ${isbn1} -> ${isbn2}`);
+        return true;
+      }
+    } else if (normalized1.length === 13 && normalized2.length === 10) {
+      const isbn13from10 = '978' + normalized2.substring(0, 9);
+      if (normalized1.startsWith(isbn13from10)) {
+        console.log(`✅ STRICT ISBN CONVERSION MATCH: ${isbn2} -> ${isbn1}`);
+        return true;
+      }
+    }
   }
   
   return false;
 };
 
 /**
- * Advanced source name normalization for precise matching
+ * STRICT source name normalization for exact matching
  */
 const normalizeSourceName = (name: string): string => {
   if (!name) return '';
   
   return name.toLowerCase()
-    .replace(/[^\w\s&]/g, '') // Keep alphanumeric, spaces, and ampersands
+    .replace(/[^\w\s&]/g, '') // Keep alphanumeric, spaces, and ampersands only
     .replace(/\s+/g, ' ') // Normalize spaces
-    .replace(/\b(the|a|an|and|of|in|for|with|on|at|by|from|to)\b/g, '') // Remove common words
-    .replace(/\s+/g, ' ') // Clean up extra spaces
     .trim();
 };
 
 /**
- * Enhanced JUFO database search with comprehensive matching strategies
+ * STRICT source name matching for highest accuracy
+ */
+const sourceNameMatches = (name1: string, name2: string): boolean => {
+  if (!name1 || !name2) return false;
+  
+  const normalized1 = normalizeSourceName(name1);
+  const normalized2 = normalizeSourceName(name2);
+  
+  // Exact match only
+  if (normalized1 === normalized2 && normalized1.length > 3) {
+    console.log(`✅ STRICT SOURCE NAME MATCH: "${name1}" = "${name2}"`);
+    return true;
+  }
+  
+  return false;
+};
+
+/**
+ * HIGH-ACCURACY JUFO database search with STRICT matching only
  */
 export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): JufoData | null => {
   if (!jufoDatabase || jufoDatabase.length === 0) {
@@ -236,7 +257,7 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
     return null;
   }
   
-  console.log(`=== COMPREHENSIVE JUFO SEARCH ===`);
+  console.log(`=== HIGH-ACCURACY JUFO SEARCH ===`);
   console.log(`Input - Source: "${source}"`);
   console.log(`Input - ISSN Print: "${issnPrint}"`);
   console.log(`Input - ISSN Online: "${issnOnline}"`);
@@ -250,23 +271,23 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
   
   console.log(`Priority search in ${currentYearEntries.length} current year entries (${latestDatabaseYear})`);
   
-  // PHASE 1: EXACT ISSN MATCHING (highest priority)
+  // PHASE 1: STRICT ISSN MATCHING (highest priority)
   if (issnPrint) {
-    console.log(`--- Phase 1A: Exact Print ISSN Search "${issnPrint}" ---`);
+    console.log(`--- Phase 1A: STRICT Print ISSN Search "${issnPrint}" ---`);
     
     // Search current year first
     let match = currentYearEntries.find(entry => {
       const entryISSN = entry.issn;
       const matches = issnMatches(issnPrint, entryISSN);
       if (matches) {
-        console.log(`✓ EXACT PRINT ISSN MATCH (current year) - Query: ${issnPrint}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
+        console.log(`✓ STRICT PRINT ISSN MATCH (current year) - Query: ${issnPrint}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
         return true;
       }
       return false;
     });
     
     if (match) {
-      console.log(`🎯 FOUND: Print ISSN exact match (current year) - Level: ${match.level}`);
+      console.log(`🎯 FOUND: Print ISSN strict match (current year) - Level: ${match.level}`);
       return match;
     }
     
@@ -275,34 +296,34 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
       const entryISSN = entry.issn;
       const matches = issnMatches(issnPrint, entryISSN);
       if (matches) {
-        console.log(`✓ EXACT PRINT ISSN MATCH (historical) - Query: ${issnPrint}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
+        console.log(`✓ STRICT PRINT ISSN MATCH (historical) - Query: ${issnPrint}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
         return true;
       }
       return false;
     });
     
     if (match) {
-      console.log(`🎯 FOUND: Print ISSN exact match (historical) - Level: ${match.level}`);
+      console.log(`🎯 FOUND: Print ISSN strict match (historical) - Level: ${match.level}`);
       return match;
     }
   }
   
   if (issnOnline) {
-    console.log(`--- Phase 1B: Exact Online ISSN Search "${issnOnline}" ---`);
+    console.log(`--- Phase 1B: STRICT Online ISSN Search "${issnOnline}" ---`);
     
     // Search current year first
     let match = currentYearEntries.find(entry => {
       const entryISSN = entry.issn;
       const matches = issnMatches(issnOnline, entryISSN);
       if (matches) {
-        console.log(`✓ EXACT ONLINE ISSN MATCH (current year) - Query: ${issnOnline}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
+        console.log(`✓ STRICT ONLINE ISSN MATCH (current year) - Query: ${issnOnline}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
         return true;
       }
       return false;
     });
     
     if (match) {
-      console.log(`🎯 FOUND: Online ISSN exact match (current year) - Level: ${match.level}`);
+      console.log(`🎯 FOUND: Online ISSN strict match (current year) - Level: ${match.level}`);
       return match;
     }
     
@@ -311,35 +332,35 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
       const entryISSN = entry.issn;
       const matches = issnMatches(issnOnline, entryISSN);
       if (matches) {
-        console.log(`✓ EXACT ONLINE ISSN MATCH (historical) - Query: ${issnOnline}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
+        console.log(`✓ STRICT ONLINE ISSN MATCH (historical) - Query: ${issnOnline}, Entry: ${entryISSN}, Source: "${entry.name}", Level: ${entry.level}`);
         return true;
       }
       return false;
     });
     
     if (match) {
-      console.log(`🎯 FOUND: Online ISSN exact match (historical) - Level: ${match.level}`);
+      console.log(`🎯 FOUND: Online ISSN strict match (historical) - Level: ${match.level}`);
       return match;
     }
   }
   
-  // PHASE 2: EXACT ISBN MATCHING
+  // PHASE 2: STRICT ISBN MATCHING
   if (isbn) {
-    console.log(`--- Phase 2: Exact ISBN Search "${isbn}" ---`);
+    console.log(`--- Phase 2: STRICT ISBN Search "${isbn}" ---`);
     
     // Search current year first
     let match = currentYearEntries.find(entry => {
       const entryIdentifier = entry.issn; // Some databases store ISBN in ISSN field
       const matches = isbnMatches(isbn, entryIdentifier);
       if (matches) {
-        console.log(`✓ EXACT ISBN MATCH (current year) - Query: ${isbn}, Entry: ${entryIdentifier}, Source: "${entry.name}", Level: ${entry.level}`);
+        console.log(`✓ STRICT ISBN MATCH (current year) - Query: ${isbn}, Entry: ${entryIdentifier}, Source: "${entry.name}", Level: ${entry.level}`);
         return true;
       }
       return false;
     });
     
     if (match) {
-      console.log(`🎯 FOUND: ISBN exact match (current year) - Level: ${match.level}`);
+      console.log(`🎯 FOUND: ISBN strict match (current year) - Level: ${match.level}`);
       return match;
     }
     
@@ -348,102 +369,55 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
       const entryIdentifier = entry.issn;
       const matches = isbnMatches(isbn, entryIdentifier);
       if (matches) {
-        console.log(`✓ EXACT ISBN MATCH (historical) - Query: ${isbn}, Entry: ${entryIdentifier}, Source: "${entry.name}", Level: ${entry.level}`);
+        console.log(`✓ STRICT ISBN MATCH (historical) - Query: ${isbn}, Entry: ${entryIdentifier}, Source: "${entry.name}", Level: ${entry.level}`);
         return true;
       }
       return false;
     });
     
     if (match) {
-      console.log(`🎯 FOUND: ISBN exact match (historical) - Level: ${match.level}`);
+      console.log(`🎯 FOUND: ISBN strict match (historical) - Level: ${match.level}`);
       return match;
     }
   }
   
-  // PHASE 3: SOURCE NAME MATCHING (multiple strategies)
+  // PHASE 3: STRICT SOURCE NAME MATCHING
   if (source && source.trim() !== "" && !source.toLowerCase().includes("unknown")) {
-    console.log(`--- Phase 3: Source Name Search "${source}" ---`);
-    const normalizedQuery = normalizeSourceName(source);
+    console.log(`--- Phase 3: STRICT Source Name Search "${source}" ---`);
     
-    if (normalizedQuery.length > 2) {
-      // Strategy 3A: Exact normalized match
-      console.log(`--- Phase 3A: Exact Normalized Match ---`);
-      let match = currentYearEntries.find(entry => {
-        const entryName = normalizeSourceName(entry.name);
-        const exactMatch = entryName === normalizedQuery;
-        if (exactMatch) {
-          console.log(`✓ EXACT NORMALIZED MATCH (current year) - Query: "${normalizedQuery}", Entry: "${entryName}", Level: ${entry.level}`);
-          return true;
-        }
-        return false;
-      });
-      
-      if (match) {
-        console.log(`🎯 FOUND: Source name exact normalized match (current year) - Level: ${match.level}`);
-        return match;
+    // Search current year first
+    let match = currentYearEntries.find(entry => {
+      const matches = sourceNameMatches(source, entry.name);
+      if (matches) {
+        console.log(`✓ STRICT SOURCE NAME MATCH (current year) - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
+        return true;
       }
-      
-      // Search historical data
-      match = jufoDatabase.find(entry => {
-        const entryName = normalizeSourceName(entry.name);
-        const exactMatch = entryName === normalizedQuery;
-        if (exactMatch) {
-          console.log(`✓ EXACT NORMALIZED MATCH (historical) - Query: "${normalizedQuery}", Entry: "${entryName}", Level: ${entry.level}`);
-          return true;
-        }
-        return false;
-      });
-      
-      if (match) {
-        console.log(`🎯 FOUND: Source name exact normalized match (historical) - Level: ${match.level}`);
-        return match;
+      return false;
+    });
+    
+    if (match) {
+      console.log(`🎯 FOUND: Source name strict match (current year) - Level: ${match.level}`);
+      return match;
+    }
+    
+    // Search historical data
+    match = jufoDatabase.find(entry => {
+      const matches = sourceNameMatches(source, entry.name);
+      if (matches) {
+        console.log(`✓ STRICT SOURCE NAME MATCH (historical) - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
+        return true;
       }
-      
-      // Strategy 3B: Partial match (conservative approach)
-      if (normalizedQuery.length > 5) { // Only for longer names to avoid false positives
-        console.log(`--- Phase 3B: Conservative Partial Match ---`);
-        match = currentYearEntries.find(entry => {
-          const entryName = normalizeSourceName(entry.name);
-          const partialMatch = (entryName.includes(normalizedQuery) || normalizedQuery.includes(entryName)) && 
-                              entryName.length > 5 && normalizedQuery.length > 5;
-          if (partialMatch) {
-            console.log(`✓ CONSERVATIVE PARTIAL MATCH (current year) - Query: "${normalizedQuery}", Entry: "${entryName}", Level: ${entry.level}`);
-            return true;
-          }
-          return false;
-        });
-        
-        if (match) {
-          console.log(`🎯 FOUND: Source name conservative partial match (current year) - Level: ${match.level}`);
-          return match;
-        }
-        
-        // Search historical data
-        match = jufoDatabase.find(entry => {
-          const entryName = normalizeSourceName(entry.name);
-          const partialMatch = (entryName.includes(normalizedQuery) || normalizedQuery.includes(entryName)) && 
-                              entryName.length > 5 && normalizedQuery.length > 5;
-          if (partialMatch) {
-            console.log(`✓ CONSERVATIVE PARTIAL MATCH (historical) - Query: "${normalizedQuery}", Entry: "${entryName}", Level: ${entry.level}`);
-            return true;
-          }
-          return false;
-        });
-        
-        if (match) {
-          console.log(`🎯 FOUND: Source name conservative partial match (historical) - Level: ${match.level}`);
-          return match;
-        }
-      }
-      
-      console.log(`❌ No source name matches found for "${normalizedQuery}"`);
-    } else {
-      console.log(`❌ Source name too short for reliable matching: "${normalizedQuery}"`);
+      return false;
+    });
+    
+    if (match) {
+      console.log(`🎯 FOUND: Source name strict match (historical) - Level: ${match.level}`);
+      return match;
     }
   }
   
-  console.log(`❌ NO MATCHES FOUND for any search criteria`);
-  console.log(`=== END COMPREHENSIVE SEARCH ===`);
+  console.log(`❌ NO STRICT MATCHES FOUND for any search criteria`);
+  console.log(`=== END HIGH-ACCURACY SEARCH ===`);
   return null;
 };
 
