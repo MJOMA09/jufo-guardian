@@ -4,11 +4,11 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * Enhanced with proper matching priority: Source first, then ISSN/ISBN
+ * Enhanced with STRICT 100% source matching priority, then ISSN/ISBN fallback
  */
 export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
-    console.log(`=== JUFO QUALITY CHECK ===`);
+    console.log(`=== STRICT JUFO QUALITY CHECK ===`);
     console.log(`Checking JUFO quality for: ${source}`);
     console.log(`ISSN Print: ${issnPrint || 'N/A'}`);
     console.log(`ISSN Online: ${issnOnline || 'N/A'}`);
@@ -27,16 +27,16 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       };
     }
     
-    // If we have imported data, use that first
+    // If we have imported data, use STRICT matching
     if (hasDatabaseData()) {
-      console.log("Using imported JUFO database for prioritized search");
+      console.log("Using imported JUFO database for STRICT prioritized search");
       
-      // PRIORITY 1: Source name matching first
-      console.log("=== PRIORITY 1: SOURCE NAME MATCHING ===");
+      // STRICT PRIORITY 1: 100% exact source name matching ONLY
+      console.log("=== STRICT PRIORITY 1: 100% EXACT SOURCE NAME MATCHING ===");
       const sourceResult = searchJufoDatabase(source);
       
       if (sourceResult) {
-        console.log(`✅ SOURCE MATCH FOUND: ${sourceResult.name}, Level: ${sourceResult.level}`);
+        console.log(`✅ 100% SOURCE MATCH FOUND: ${sourceResult.name}, Level: ${sourceResult.level}`);
         const { isIndexed, status } = determineIndexingStatus(sourceResult.level);
         
         return {
@@ -49,13 +49,13 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         };
       }
       
-      // PRIORITY 2: ISSN/ISBN matching if source not found
-      console.log("=== PRIORITY 2: ISSN/ISBN MATCHING ===");
+      // STRICT PRIORITY 2: ISSN/ISBN matching ONLY (source < 100% match)
+      console.log("=== STRICT PRIORITY 2: ISSN/ISBN MATCHING (SOURCE < 100%) ===");
       if (issnPrint || issnOnline || isbn) {
         const identifierResult = searchJufoDatabase("", issnPrint, issnOnline, isbn);
         
         if (identifierResult) {
-          console.log(`✅ ISSN/ISBN MATCH FOUND: ${identifierResult.name}, Level: ${identifierResult.level}`);
+          console.log(`✅ ISSN/ISBN MATCH FOUND (DISCARDING < 100% SOURCE): ${identifierResult.name}, Level: ${identifierResult.level}`);
           const { isIndexed, status } = determineIndexingStatus(identifierResult.level);
           
           return {
@@ -70,7 +70,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       }
       
       // No match found in database
-      console.log(`❌ No match found in JUFO database for source or identifiers`);
+      console.log(`❌ No 100% source match OR ISSN/ISBN match found in JUFO database`);
       return { 
         level: "Not found", 
         norwegianLevel: null, 
@@ -110,22 +110,10 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       "new journal": { level: "Not found", norwegianLevel: null, indexed: false, evaluated: false },
     };
     
-    // Enhanced fuzzy matching with improved normalization
+    // STRICT matching for mock database - exact match only
     const matchedKey = Object.keys(mockDatabase).find(k => {
-      // Normalize both strings for comparison
-      const normalizedKey = k.toLowerCase()
-        .replace(/[\-–—]/g, '') // Replace various types of hyphens/dashes
-        .replace(/[^\w\s]/g, '') // Remove special characters
-        .replace(/\s+/g, ' ') // Normalize spaces
-        .trim();
-      
-      const normalizedQuery = normalizedSource
-        .replace(/[\-–—]/g, '')
-        .replace(/[^\w\s]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-        
-      return normalizedKey.includes(normalizedQuery) || normalizedQuery.includes(normalizedKey);
+      const normalizedKey = k.toLowerCase().trim();
+      return normalizedKey === normalizedSource;
     });
     
     // Return mock data with CORRECT status assignment
@@ -133,7 +121,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
       const { isIndexed, status } = determineIndexingStatus(mockResult.level);
       
-      console.log(`✅ Mock database match: ${matchedKey} -> Level: ${mockResult.level}, Status: ${status}`);
+      console.log(`✅ Mock database 100% exact match: ${matchedKey} -> Level: ${mockResult.level}, Status: ${status}`);
       
       return { 
         ...mockResult,
@@ -142,7 +130,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         status: status
       };
     } else {
-      console.log(`❌ No match found in mock database for: ${normalizedSource}`);
+      console.log(`❌ No 100% exact match found in mock database for: ${normalizedSource}`);
       return { 
         level: "Not found", 
         norwegianLevel: null, 
