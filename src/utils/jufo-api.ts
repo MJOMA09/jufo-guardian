@@ -18,7 +18,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     if (!source || source.trim() === "" || source.toLowerCase().includes("unknown")) {
       console.log("Unknown or empty source detected");
       return { 
-        level: "Absent", 
+        level: "Not found", 
         norwegianLevel: null, 
         indexed: false, 
         evaluated: false, 
@@ -43,8 +43,8 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         let isIndexed = false;
         let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
         
-        // Fix the type comparison issue - check if level is not null/undefined and not "Absent"
-        if (foundResult.level !== null && foundResult.level !== undefined && foundResult.level !== "Absent") {
+        // Fix the type comparison issue - properly handle different level types
+        if (foundResult.level !== null && foundResult.level !== undefined) {
           // Ensure we're working with a number for comparison
           const levelNum = typeof foundResult.level === 'number' ? foundResult.level : parseInt(String(foundResult.level), 10);
           
@@ -73,9 +73,9 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       } else {
         console.log(`❌ No match found in JUFO database for: ${source}`);
         console.log(`❌ Checked ISSN Print: ${issnPrint}, ISSN Online: ${issnOnline}, ISBN: ${isbn}`);
-        // No match found in database - mark as Absent
+        // No match found in database - mark as Not found
         return { 
-          level: "Absent", 
+          level: "Not found", 
           norwegianLevel: null, 
           indexed: false, 
           evaluated: false, 
@@ -110,8 +110,8 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       // Add level 0 journals (not indexed but evaluated)
       "predatory journal": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
       "low quality venue": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
-      // Absent journals
-      "new journal": { level: "Absent", norwegianLevel: null, indexed: false, evaluated: false },
+      // Not found journals
+      "new journal": { level: "Not found", norwegianLevel: null, indexed: false, evaluated: false },
     };
     
     // Enhanced fuzzy matching with improved normalization
@@ -140,7 +140,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       let isIndexed = false;
       let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
       
-      if (mockResult.level !== null && mockResult.level !== "Absent" && typeof mockResult.level === 'number') {
+      if (mockResult.level !== null && mockResult.level !== "Not found" && typeof mockResult.level === 'number') {
         // CRITICAL: Only levels 1, 2, 3 should be marked as "Indexed"
         if (mockResult.level >= 1 && mockResult.level <= 3) {
           isIndexed = true;
@@ -162,7 +162,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     } else {
       console.log(`❌ No match found in mock database for: ${normalizedSource}`);
       return { 
-        level: "Absent", 
+        level: "Not found", 
         norwegianLevel: null, 
         indexed: false, 
         evaluated: false, 
@@ -173,7 +173,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
   } catch (error) {
     console.error("❌ Error checking JUFO quality:", error);
     return { 
-      level: "Absent", 
+      level: "Not found", 
       norwegianLevel: null, 
       indexed: false, 
       evaluated: false, 
