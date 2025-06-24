@@ -304,19 +304,17 @@ const sourceNameMatches = (name1: string, name2: string): { match: boolean, conf
 };
 
 /**
- * COMPREHENSIVE JUFO database search with prioritized matching
+ * PRIORITIZED JUFO database search
+ * Priority 1: Source name only
+ * Priority 2: ISSN/ISBN only (when source search fails)
  */
-export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): JufoData | null => {
+export const searchJufoDatabase = (source?: string, issnPrint?: string, issnOnline?: string, isbn?: string): JufoData | null => {
   if (!jufoDatabase || jufoDatabase.length === 0) {
     console.log("No JUFO database data available for search");
     return null;
   }
   
-  console.log(`=== COMPREHENSIVE JUFO SEARCH ===`);
-  console.log(`Input - Source: "${source}"`);
-  console.log(`Input - ISSN Print: "${issnPrint}"`);
-  console.log(`Input - ISSN Online: "${issnOnline}"`);
-  console.log(`Input - ISBN: "${isbn}"`);
+  console.log(`=== PRIORITIZED JUFO SEARCH ===`);
   console.log(`Database entries: ${jufoDatabase.length}`);
   
   // Get current year entries first, then all entries as fallback
@@ -326,90 +324,113 @@ export const searchJufoDatabase = (source: string, issnPrint?: string, issnOnlin
   
   console.log(`Priority search in ${currentYearEntries.length} current year entries (${latestDatabaseYear})`);
   
-  let bestMatch: JufoData | null = null;
-  let bestMatchConfidence = 0;
-  
-  // Helper function to search in a dataset
-  const searchInDataset = (dataset: JufoData[], datasetName: string) => {
-    console.log(`--- Searching in ${datasetName} (${dataset.length} entries) ---`);
+  // PRIORITY 1: SOURCE NAME SEARCH ONLY
+  if (source && source.trim() !== "" && !source.toLowerCase().includes("unknown")) {
+    console.log(`=== PRIORITY 1: SOURCE NAME SEARCH ===`);
+    console.log(`Searching for source: "${source}"`);
     
-    // PHASE 1: ISSN MATCHING (highest priority)
-    if (issnPrint) {
-      console.log(`Phase 1A: Print ISSN Search "${issnPrint}"`);
-      for (const entry of dataset) {
-        if (issnMatches(issnPrint, entry.issn)) {
-          console.log(`✓ PRINT ISSN MATCH - Query: ${issnPrint}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
-          if (bestMatchConfidence < 100) {
-            bestMatch = entry;
-            bestMatchConfidence = 100;
-          }
-        }
-      }
+    const sourceMatch = searchBySourceName(currentYearEntries, source, "current year data");
+    if (sourceMatch) {
+      console.log(`🎯 SOURCE MATCH FOUND: Level ${sourceMatch.level}, Source: "${sourceMatch.name}"`);
+      return sourceMatch;
     }
     
-    if (issnOnline) {
-      console.log(`Phase 1B: Online ISSN Search "${issnOnline}"`);
-      for (const entry of dataset) {
-        if (issnMatches(issnOnline, entry.issn)) {
-          console.log(`✓ ONLINE ISSN MATCH - Query: ${issnOnline}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
-          if (bestMatchConfidence < 100) {
-            bestMatch = entry;
-            bestMatchConfidence = 100;
-          }
-        }
-      }
+    // If no match in current year, search all historical data
+    console.log("Searching historical data for source match...");
+    const historicalSourceMatch = searchBySourceName(jufoDatabase, source, "all historical data");
+    if (historicalSourceMatch) {
+      console.log(`🎯 HISTORICAL SOURCE MATCH FOUND: Level ${historicalSourceMatch.level}, Source: "${historicalSourceMatch.name}"`);
+      return historicalSourceMatch;
     }
     
-    // PHASE 2: ISBN MATCHING
-    if (isbn && bestMatchConfidence < 100) {
-      console.log(`Phase 2: ISBN Search "${isbn}"`);
-      for (const entry of dataset) {
-        if (isbnMatches(isbn, entry.issn)) {
-          console.log(`✓ ISBN MATCH - Query: ${isbn}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
-          if (bestMatchConfidence < 90) {
-            bestMatch = entry;
-            bestMatchConfidence = 90;
-          }
-        }
-      }
-    }
-    
-    // PHASE 3: SOURCE NAME MATCHING
-    if (source && source.trim() !== "" && !source.toLowerCase().includes("unknown") && bestMatchConfidence < 90) {
-      console.log(`Phase 3: Source Name Search "${source}"`);
-      for (const entry of dataset) {
-        const matchResult = sourceNameMatches(source, entry.name);
-        if (matchResult.match) {
-          console.log(`✓ SOURCE NAME MATCH (${matchResult.confidence}) - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
-          
-          const confidence = matchResult.confidence === 'exact' ? 80 : 
-                           matchResult.confidence === 'high' ? 70 : 60;
-          
-          if (bestMatchConfidence < confidence) {
-            bestMatch = entry;
-            bestMatchConfidence = confidence;
-          }
-        }
-      }
-    }
-  };
-  
-  // Search current year first
-  searchInDataset(currentYearEntries, "current year data");
-  
-  // If no good match found, search all historical data
-  if (bestMatchConfidence < 80) {
-    console.log("Searching historical data for better match...");
-    searchInDataset(jufoDatabase, "all historical data");
+    console.log(`❌ NO SOURCE MATCH FOUND for: "${source}"`);
+    return null; // Return null for source-only search if no match
   }
   
-  if (bestMatch) {
-    console.log(`🎯 BEST MATCH FOUND (confidence: ${bestMatchConfidence}%): Level ${bestMatch.level}, Source: "${bestMatch.name}"`);
-    return bestMatch;
+  // PRIORITY 2: ISSN/ISBN SEARCH ONLY (when no source provided or source search failed)
+  if (issnPrint || issnOnline || isbn) {
+    console.log(`=== PRIORITY 2: ISSN/ISBN SEARCH ===`);
+    console.log(`ISSN Print: "${issnPrint || 'N/A'}"`);
+    console.log(`ISSN Online: "${issnOnline || 'N/A'}"`);
+    console.log(`ISBN: "${isbn || 'N/A'}"`);
+    
+    const identifierMatch = searchByIdentifiers(currentYearEntries, issnPrint, issnOnline, isbn, "current year data");
+    if (identifierMatch) {
+      console.log(`🎯 IDENTIFIER MATCH FOUND: Level ${identifierMatch.level}, Source: "${identifierMatch.name}"`);
+      return identifierMatch;
+    }
+    
+    // If no match in current year, search all historical data
+    console.log("Searching historical data for identifier match...");
+    const historicalIdentifierMatch = searchByIdentifiers(jufoDatabase, issnPrint, issnOnline, isbn, "all historical data");
+    if (historicalIdentifierMatch) {
+      console.log(`🎯 HISTORICAL IDENTIFIER MATCH FOUND: Level ${historicalIdentifierMatch.level}, Source: "${historicalIdentifierMatch.name}"`);
+      return historicalIdentifierMatch;
+    }
+    
+    console.log(`❌ NO IDENTIFIER MATCH FOUND`);
   }
   
   console.log(`❌ NO MATCHES FOUND for any search criteria`);
-  console.log(`=== END COMPREHENSIVE SEARCH ===`);
+  console.log(`=== END PRIORITIZED SEARCH ===`);
+  return null;
+};
+
+/**
+ * Search by source name only
+ */
+const searchBySourceName = (dataset: JufoData[], source: string, datasetName: string): JufoData | null => {
+  console.log(`--- Searching source names in ${datasetName} (${dataset.length} entries) ---`);
+  
+  for (const entry of dataset) {
+    const matchResult = sourceNameMatches(source, entry.name);
+    if (matchResult.match) {
+      console.log(`✓ SOURCE NAME MATCH (${matchResult.confidence}) - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
+      return entry;
+    }
+  }
+  
+  return null;
+};
+
+/**
+ * Search by ISSN/ISBN identifiers only
+ */
+const searchByIdentifiers = (dataset: JufoData[], issnPrint?: string, issnOnline?: string, isbn?: string, datasetName?: string): JufoData | null => {
+  console.log(`--- Searching identifiers in ${datasetName} (${dataset.length} entries) ---`);
+  
+  // ISSN MATCHING (highest priority)
+  if (issnPrint) {
+    console.log(`Searching Print ISSN "${issnPrint}"`);
+    for (const entry of dataset) {
+      if (issnMatches(issnPrint, entry.issn)) {
+        console.log(`✓ PRINT ISSN MATCH - Query: ${issnPrint}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
+        return entry;
+      }
+    }
+  }
+  
+  if (issnOnline) {
+    console.log(`Searching Online ISSN "${issnOnline}"`);
+    for (const entry of dataset) {
+      if (issnMatches(issnOnline, entry.issn)) {
+        console.log(`✓ ONLINE ISSN MATCH - Query: ${issnOnline}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
+        return entry;
+      }
+    }
+  }
+  
+  // ISBN MATCHING
+  if (isbn) {
+    console.log(`Searching ISBN "${isbn}"`);
+    for (const entry of dataset) {
+      if (isbnMatches(isbn, entry.issn)) {
+        console.log(`✓ ISBN MATCH - Query: ${isbn}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
+        return entry;
+      }
+    }
+  }
+  
   return null;
 };
 

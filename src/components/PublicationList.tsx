@@ -56,11 +56,11 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
     
     if (!publication.checked) return "Not checked";
-    if (publication.jufoLevel === "Absent") return "Absent";
+    if (publication.jufoLevel === "Not found") return "Not found";
     if (!publication.indexed && publication.jufoLevel === null) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
     
-    // Show ALL levels including 0 and "Absent" - they are all valid JUFO levels
+    // Show ALL levels including 0 and "Not found" - they are all valid JUFO levels
     return publication.jufoLevel !== null && publication.jufoLevel !== undefined
       ? publication.jufoLevel.toString()
       : "Unknown";
@@ -73,7 +73,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
     
     if (!publication.checked) return "Not checked";
-    if (publication.jufoLevel === "Absent") return "N/A";
+    if (publication.jufoLevel === "Not found") return "N/A";
     if (!publication.indexed && publication.jufoLevel === null) return "N/A";
     if (publication.evaluated === false) return "N/A";
     
@@ -100,10 +100,10 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     );
   };
 
-  // Enhanced ISSN/ISBN display functions - ONLY show if publication is checked and has valid match
+  // Enhanced ISSN/ISBN display functions - show all available identifiers
   const displayISSN = (issn: string | undefined, publication: Publication): string => {
-    // Only show ISSN if publication has been checked and found in JUFO database
-    if (!publication.checked || publication.jufoLevel === "Absent" || !issn) return '-';
+    // Show ISSN for all publications that have been checked, regardless of level
+    if (!publication.checked || !issn) return '-';
     
     // Ensure proper ISSN format (XXXX-XXXX)
     const cleaned = issn.replace(/[^0-9X]/gi, '');
@@ -114,8 +114,8 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const displayISBN = (isbn: string | undefined, publication: Publication): string => {
-    // Only show ISBN if publication has been checked and found in JUFO database
-    if (!publication.checked || publication.jufoLevel === "Absent" || !isbn) return '-';
+    // Show ISBN for all publications that have been checked, regardless of level
+    if (!publication.checked || !isbn) return '-';
     return isbn;
   };
 
@@ -124,7 +124,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (filterLevel === "notIndexed") return !pub.indexed;
     if (filterLevel === "pending") return !pub.checked;
     if (filterLevel === "notEvaluated") return pub.evaluated === false;
-    if (filterLevel === "absent") return pub.jufoLevel === "Absent";
+    if (filterLevel === "absent") return pub.jufoLevel === "Not found";
     return pub.jufoLevel?.toString() === filterLevel;
   });
 
@@ -135,8 +135,8 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
       case "yearDesc":
         return b.year - a.year;
       case "jufoLevel":
-        const aLevel = a.jufoLevel === "Absent" ? -2 : (a.jufoLevel ?? -1);
-        const bLevel = b.jufoLevel === "Absent" ? -2 : (b.jufoLevel ?? -1);
+        const aLevel = a.jufoLevel === "Not found" ? -2 : (a.jufoLevel ?? -1);
+        const bLevel = b.jufoLevel === "Not found" ? -2 : (b.jufoLevel ?? -1);
         return Number(bLevel) - Number(aLevel);
       case "source":
         return a.source.localeCompare(b.source);

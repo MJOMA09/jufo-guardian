@@ -4,7 +4,7 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * Enhanced with comprehensive matching and proper status assignment
+ * Enhanced with proper matching priority: Source first, then ISSN/ISBN
  */
 export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
@@ -29,60 +29,56 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     
     // If we have imported data, use that first
     if (hasDatabaseData()) {
-      console.log("Using imported JUFO database for comprehensive search");
+      console.log("Using imported JUFO database for prioritized search");
       
-      // Use the enhanced comprehensive search
-      const foundResult = searchJufoDatabase(source, issnPrint, issnOnline, isbn);
+      // PRIORITY 1: Source name matching first
+      console.log("=== PRIORITY 1: SOURCE NAME MATCHING ===");
+      const sourceResult = searchJufoDatabase(source);
       
-      if (foundResult) {
-        // CORRECT status assignment logic:
-        // - Level 1, 2, or 3: Indexed (these are quality-ranked publications)
-        // - Level 0: Not Indexed (in database but not quality-ranked)
-        // - Absent: Not in database at all
-        
-        let isIndexed = false;
-        let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
-        
-        // Fix the type comparison issue - properly handle different level types
-        if (foundResult.level !== null && foundResult.level !== undefined) {
-          // Ensure we're working with a number for comparison
-          const levelNum = typeof foundResult.level === 'number' ? foundResult.level : parseInt(String(foundResult.level), 10);
-          
-          if (!isNaN(levelNum)) {
-            // CRITICAL FIX: Levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
-            if (levelNum >= 1 && levelNum <= 3) {
-              isIndexed = true;
-              status = 'Indexed';
-            } else if (levelNum === 0) {
-              isIndexed = false;
-              status = 'Not Indexed';
-            }
-          }
-        }
-        
-        console.log(`✅ FINAL RESULT: Level ${foundResult.level}, Indexed: ${isIndexed}, Status: ${status}`);
+      if (sourceResult) {
+        console.log(`✅ SOURCE MATCH FOUND: ${sourceResult.name}, Level: ${sourceResult.level}`);
+        const { isIndexed, status } = determineIndexingStatus(sourceResult.level);
         
         return {
-          level: foundResult.level,
-          norwegianLevel: foundResult.norwegianLevel,
+          level: sourceResult.level,
+          norwegianLevel: sourceResult.norwegianLevel,
           indexed: isIndexed,
-          evaluated: foundResult.evaluated,
+          evaluated: sourceResult.evaluated,
           checked: true,
           status: status
         };
-      } else {
-        console.log(`❌ No match found in JUFO database for: ${source}`);
-        console.log(`❌ Checked ISSN Print: ${issnPrint}, ISSN Online: ${issnOnline}, ISBN: ${isbn}`);
-        // No match found in database - mark as Not found
-        return { 
-          level: "Not found", 
-          norwegianLevel: null, 
-          indexed: false, 
-          evaluated: false, 
-          checked: true, 
-          status: 'Not Indexed' 
-        };
       }
+      
+      // PRIORITY 2: ISSN/ISBN matching if source not found
+      console.log("=== PRIORITY 2: ISSN/ISBN MATCHING ===");
+      if (issnPrint || issnOnline || isbn) {
+        const identifierResult = searchJufoDatabase("", issnPrint, issnOnline, isbn);
+        
+        if (identifierResult) {
+          console.log(`✅ ISSN/ISBN MATCH FOUND: ${identifierResult.name}, Level: ${identifierResult.level}`);
+          const { isIndexed, status } = determineIndexingStatus(identifierResult.level);
+          
+          return {
+            level: identifierResult.level,
+            norwegianLevel: identifierResult.norwegianLevel,
+            indexed: isIndexed,
+            evaluated: identifierResult.evaluated,
+            checked: true,
+            status: status
+          };
+        }
+      }
+      
+      // No match found in database
+      console.log(`❌ No match found in JUFO database for source or identifiers`);
+      return { 
+        level: "Not found", 
+        norwegianLevel: null, 
+        indexed: false, 
+        evaluated: false, 
+        checked: true, 
+        status: 'Not Indexed' 
+      };
     }
     
     // Fall back to enhanced mock database if no imported data
@@ -135,21 +131,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     // Return mock data with CORRECT status assignment
     if (matchedKey) {
       const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
-      
-      // Apply CORRECT indexing logic for mock data
-      let isIndexed = false;
-      let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
-      
-      if (mockResult.level !== null && mockResult.level !== "Not found" && typeof mockResult.level === 'number') {
-        // CRITICAL: Only levels 1, 2, 3 should be marked as "Indexed"
-        if (mockResult.level >= 1 && mockResult.level <= 3) {
-          isIndexed = true;
-          status = 'Indexed';
-        } else if (mockResult.level === 0) {
-          isIndexed = false;
-          status = 'Not Indexed';
-        }
-      }
+      const { isIndexed, status } = determineIndexingStatus(mockResult.level);
       
       console.log(`✅ Mock database match: ${matchedKey} -> Level: ${mockResult.level}, Status: ${status}`);
       
@@ -181,4 +163,28 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       status: 'Not Indexed' 
     };
   }
+};
+
+/**
+ * Determine indexing status based on JUFO level
+ * CRITICAL LOGIC: Only levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
+ */
+const determineIndexingStatus = (level: number | string | null | undefined): { isIndexed: boolean, status: 'Indexed' | 'Not Indexed' } => {
+  if (level === null || level === undefined || level === "Not found") {
+    return { isIndexed: false, status: 'Not Indexed' };
+  }
+  
+  // Ensure we're working with a number for comparison
+  const levelNum = typeof level === 'number' ? level : parseInt(String(level), 10);
+  
+  if (!isNaN(levelNum)) {
+    // CRITICAL: Levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
+    if (levelNum >= 1 && levelNum <= 3) {
+      return { isIndexed: true, status: 'Indexed' };
+    } else if (levelNum === 0) {
+      return { isIndexed: false, status: 'Not Indexed' };
+    }
+  }
+  
+  return { isIndexed: false, status: 'Not Indexed' };
 };
