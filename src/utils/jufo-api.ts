@@ -43,7 +43,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         let isIndexed = false;
         let status: 'Indexed' | 'Not Indexed' = 'Not Indexed';
         
-        // Fix the type comparison issue
+        // Fix the type comparison issue - check if level is not null/undefined and not "Absent"
         if (foundResult.level !== null && foundResult.level !== undefined && foundResult.level !== "Absent") {
           // Ensure we're working with a number for comparison
           const levelNum = typeof foundResult.level === 'number' ? foundResult.level : parseInt(String(foundResult.level), 10);
