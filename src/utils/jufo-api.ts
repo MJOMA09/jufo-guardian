@@ -4,11 +4,11 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * Enhanced with STRICT 100% source matching priority, then ISSN/ISBN fallback
+ * Enhanced with ULTRA-STRICT 100% source matching priority, then ISSN/ISBN fallback
  */
 export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
-    console.log(`=== STRICT JUFO QUALITY CHECK ===`);
+    console.log(`=== ULTRA-STRICT JUFO QUALITY CHECK ===`);
     console.log(`Checking JUFO quality for: ${source}`);
     console.log(`ISSN Print: ${issnPrint || 'N/A'}`);
     console.log(`ISSN Online: ${issnOnline || 'N/A'}`);
@@ -27,16 +27,16 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       };
     }
     
-    // If we have imported data, use STRICT matching
+    // If we have imported data, use ULTRA-STRICT matching
     if (hasDatabaseData()) {
-      console.log("Using imported JUFO database for STRICT prioritized search");
+      console.log("Using imported JUFO database for ULTRA-STRICT prioritized search");
       
-      // STRICT PRIORITY 1: 100% exact source name matching ONLY
-      console.log("=== STRICT PRIORITY 1: 100% EXACT SOURCE NAME MATCHING ===");
+      // ULTRA-STRICT PRIORITY 1: 100% exact source name matching ONLY
+      console.log("=== ULTRA-STRICT PRIORITY 1: 100% EXACT SOURCE NAME MATCHING ===");
       const sourceResult = searchJufoDatabase(source);
       
       if (sourceResult) {
-        console.log(`✅ 100% SOURCE MATCH FOUND: ${sourceResult.name}, Level: ${sourceResult.level}`);
+        console.log(`✅ 100% ULTRA-STRICT SOURCE MATCH FOUND: ${sourceResult.name}, Level: ${sourceResult.level}`);
         const { isIndexed, status } = determineIndexingStatus(sourceResult.level);
         
         return {
@@ -49,8 +49,8 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         };
       }
       
-      // STRICT PRIORITY 2: ISSN/ISBN matching ONLY (source < 100% match)
-      console.log("=== STRICT PRIORITY 2: ISSN/ISBN MATCHING (SOURCE < 100%) ===");
+      // ULTRA-STRICT PRIORITY 2: ISSN/ISBN matching ONLY (source < 100% match)
+      console.log("=== ULTRA-STRICT PRIORITY 2: ISSN/ISBN MATCHING (SOURCE < 100%) ===");
       if (issnPrint || issnOnline || isbn) {
         const identifierResult = searchJufoDatabase("", issnPrint, issnOnline, isbn);
         
@@ -70,7 +70,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       }
       
       // No match found in database
-      console.log(`❌ No 100% source match OR ISSN/ISBN match found in JUFO database`);
+      console.log(`❌ No 100% ultra-strict source match OR ISSN/ISBN match found in JUFO database`);
       return { 
         level: "Not found", 
         norwegianLevel: null, 
@@ -110,7 +110,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       "new journal": { level: "Not found", norwegianLevel: null, indexed: false, evaluated: false },
     };
     
-    // STRICT matching for mock database - exact match only
+    // ULTRA-STRICT matching for mock database - exact match only
     const matchedKey = Object.keys(mockDatabase).find(k => {
       const normalizedKey = k.toLowerCase().trim();
       return normalizedKey === normalizedSource;

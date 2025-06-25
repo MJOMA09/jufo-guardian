@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { JufoData } from "@/types";
 
@@ -253,19 +252,20 @@ const isbnMatches = (isbn1: string, isbn2: string): boolean => {
 };
 
 /**
- * STRICT source name normalization for 100% exact matching
+ * ULTRA-STRICT source name normalization for 100% exact matching
+ * This function ensures that only EXACTLY identical sources are matched
  */
 const normalizeSourceName = (name: string): string => {
   if (!name) return '';
   
-  return name.toLowerCase()
-    .replace(/[^\w\s&]/g, '') // Keep alphanumeric, spaces, and ampersands
-    .replace(/\s+/g, ' ') // Normalize spaces
-    .trim();
+  // Minimal normalization - only trim whitespace and convert to lowercase
+  // Keep ALL punctuation, special characters, and word order EXACTLY as is
+  return name.trim().toLowerCase();
 };
 
 /**
- * STRICT 100% source name matching - only exact matches accepted
+ * ULTRA-STRICT 100% source name matching - ZERO tolerance for differences
+ * This ensures maximum accuracy by rejecting any partial matches
  */
 const sourceNameMatches = (name1: string, name2: string): boolean => {
   if (!name1 || !name2) return false;
@@ -275,22 +275,24 @@ const sourceNameMatches = (name1: string, name2: string): boolean => {
   
   if (!normalized1 || !normalized2) return false;
   
-  // ONLY exact match (100% match required)
+  // ABSOLUTE exact match only - every character must be identical
   const isExactMatch = normalized1 === normalized2;
   
   if (isExactMatch) {
-    console.log(`✅ 100% EXACT SOURCE MATCH: "${name1}" = "${name2}"`);
+    console.log(`✅ 100% ULTRA-STRICT SOURCE MATCH: "${name1}" === "${name2}"`);
   } else {
-    console.log(`❌ SOURCE NOT 100% MATCH: "${name1}" ≠ "${name2}"`);
+    console.log(`❌ SOURCE NOT 100% MATCH: "${name1}" !== "${name2}"`);
+    console.log(`   Query normalized: "${normalized1}"`);
+    console.log(`   Database normalized: "${normalized2}"`);
   }
   
   return isExactMatch;
 };
 
 /**
- * STRICT PRIORITIZED JUFO database search
- * Priority 1: 100% exact source name matching ONLY
- * Priority 2: ISSN/ISBN matching ONLY (when source search fails or is less than 100%)
+ * ULTRA-STRICT PRIORITIZED JUFO database search
+ * Priority 1: 100% exact source name matching ONLY (ZERO tolerance)
+ * Priority 2: ISSN/ISBN matching ONLY (when source search fails)
  */
 export const searchJufoDatabase = (source?: string, issnPrint?: string, issnOnline?: string, isbn?: string): JufoData | null => {
   if (!jufoDatabase || jufoDatabase.length === 0) {
@@ -298,7 +300,7 @@ export const searchJufoDatabase = (source?: string, issnPrint?: string, issnOnli
     return null;
   }
   
-  console.log(`=== STRICT PRIORITIZED JUFO SEARCH ===`);
+  console.log(`=== ULTRA-STRICT PRIORITIZED JUFO SEARCH ===`);
   console.log(`Database entries: ${jufoDatabase.length}`);
   
   // Get current year entries first, then all entries as fallback
@@ -308,28 +310,28 @@ export const searchJufoDatabase = (source?: string, issnPrint?: string, issnOnli
   
   console.log(`Priority search in ${currentYearEntries.length} current year entries (${latestDatabaseYear})`);
   
-  // PRIORITY 1: 100% EXACT SOURCE NAME SEARCH ONLY
+  // PRIORITY 1: 100% ULTRA-STRICT SOURCE NAME SEARCH ONLY
   if (source && source.trim() !== "" && !source.toLowerCase().includes("unknown")) {
-    console.log(`=== PRIORITY 1: 100% EXACT SOURCE NAME SEARCH ===`);
+    console.log(`=== PRIORITY 1: 100% ULTRA-STRICT SOURCE NAME SEARCH ===`);
     console.log(`Searching for source: "${source}"`);
     
-    const exactSourceMatch = searchByExactSourceName(currentYearEntries, source, "current year data");
+    const exactSourceMatch = searchByUltraStrictSourceName(currentYearEntries, source, "current year data");
     if (exactSourceMatch) {
-      console.log(`🎯 100% SOURCE MATCH FOUND: Level ${exactSourceMatch.level}, Source: "${exactSourceMatch.name}"`);
+      console.log(`🎯 100% ULTRA-STRICT SOURCE MATCH FOUND: Level ${exactSourceMatch.level}, Source: "${exactSourceMatch.name}"`);
       console.log(`✅ RETURNING SOURCE MATCH - IGNORING ISSN/ISBN`);
       return exactSourceMatch;
     }
     
     // If no 100% match in current year, search all historical data
-    console.log("Searching historical data for 100% exact source match...");
-    const historicalExactSourceMatch = searchByExactSourceName(jufoDatabase, source, "all historical data");
+    console.log("Searching historical data for 100% ultra-strict source match...");
+    const historicalExactSourceMatch = searchByUltraStrictSourceName(jufoDatabase, source, "all historical data");
     if (historicalExactSourceMatch) {
-      console.log(`🎯 100% HISTORICAL SOURCE MATCH FOUND: Level ${historicalExactSourceMatch.level}, Source: "${historicalExactSourceMatch.name}"`);
+      console.log(`🎯 100% HISTORICAL ULTRA-STRICT SOURCE MATCH FOUND: Level ${historicalExactSourceMatch.level}, Source: "${historicalExactSourceMatch.name}"`);
       console.log(`✅ RETURNING HISTORICAL SOURCE MATCH - IGNORING ISSN/ISBN`);
       return historicalExactSourceMatch;
     }
     
-    console.log(`❌ NO 100% EXACT SOURCE MATCH FOUND for: "${source}"`);
+    console.log(`❌ NO 100% ULTRA-STRICT SOURCE MATCH FOUND for: "${source}"`);
     console.log(`⚠️  SOURCE MATCH < 100% - FALLING BACK TO ISSN/ISBN MATCHING`);
   }
   
@@ -360,24 +362,24 @@ export const searchJufoDatabase = (source?: string, issnPrint?: string, issnOnli
   }
   
   console.log(`❌ NO MATCHES FOUND for any search criteria`);
-  console.log(`=== END STRICT PRIORITIZED SEARCH ===`);
+  console.log(`=== END ULTRA-STRICT PRIORITIZED SEARCH ===`);
   return null;
 };
 
 /**
- * Search by 100% exact source name only
+ * Search by 100% ultra-strict source name only - ZERO tolerance for differences
  */
-const searchByExactSourceName = (dataset: JufoData[], source: string, datasetName: string): JufoData | null => {
-  console.log(`--- Searching for 100% exact source names in ${datasetName} (${dataset.length} entries) ---`);
+const searchByUltraStrictSourceName = (dataset: JufoData[], source: string, datasetName: string): JufoData | null => {
+  console.log(`--- Searching for 100% ultra-strict source names in ${datasetName} (${dataset.length} entries) ---`);
   
   for (const entry of dataset) {
     if (sourceNameMatches(source, entry.name)) {
-      console.log(`✓ 100% EXACT SOURCE NAME MATCH - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
+      console.log(`✓ 100% ULTRA-STRICT SOURCE NAME MATCH - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
       return entry;
     }
   }
   
-  console.log(`❌ No 100% exact source name match found in ${datasetName}`);
+  console.log(`❌ No 100% ultra-strict source name match found in ${datasetName}`);
   return null;
 };
 
