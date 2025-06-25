@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
@@ -14,11 +15,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
-import { Filter } from "lucide-react";
+import { Filter, CheckCircle, Loader2, Clock } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const Index = () => {
   const [publications, setPublications] = useState<Publication[]>([]);
   const [isChecking, setIsChecking] = useState(false);
+  const [checkingProgress, setCheckingProgress] = useState(0);
+  const [currentlyChecking, setCurrentlyChecking] = useState<string>("");
   const [exportFormat, setExportFormat] = useState<"csv" | "excel">("csv");
   const { toast } = useToast();
 
@@ -44,13 +48,25 @@ const Index = () => {
     if (publications.length === 0) {
       toast({
         title: "No Publications",
-        description: "Please add publications to check.",
+        description: "Please add publications to check their JUFO quality.",
         variant: "destructive",
       });
       return;
     }
 
+    const uncheckedPublications = publications.filter(pub => !pub.checked);
+    
+    if (uncheckedPublications.length === 0) {
+      toast({
+        title: "All Publications Checked",
+        description: "All publications have already been checked for JUFO quality.",
+      });
+      return;
+    }
+
     setIsChecking(true);
+    setCheckingProgress(0);
+    setCurrentlyChecking("");
     
     // Create a copy of publications
     const updatedPublications = [...publications];
@@ -58,10 +74,18 @@ const Index = () => {
     let indexedCount = 0;
     let evaluatedCount = 0;
     
-    // Check each publication
+    const totalToCheck = uncheckedPublications.length;
+    
+    // Check each unchecked publication
     for (let i = 0; i < updatedPublications.length; i++) {
       if (!updatedPublications[i].checked) {
         try {
+          // Update current checking status
+          const shortTitle = updatedPublications[i].title.length > 50 
+            ? updatedPublications[i].title.substring(0, 50) + "..."
+            : updatedPublications[i].title;
+          setCurrentlyChecking(shortTitle);
+          
           // Check JUFO quality with ISSN fields
           const result = await checkJufoQuality(
             updatedPublications[i].source,
@@ -84,20 +108,44 @@ const Index = () => {
           checkedCount++;
           if (result.indexed) indexedCount++;
           if (result.evaluated) evaluatedCount++;
+          
+          // Update progress
+          const progress = (checkedCount / totalToCheck) * 100;
+          setCheckingProgress(progress);
+          
+          // Update state incrementally for better UX
+          setPublications([...updatedPublications]);
+          
+          // Small delay to show progress (can be removed for faster processing)
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
         } catch (error) {
           console.error("Error checking publication:", error);
+          toast({
+            title: "Check Failed",
+            description: `Failed to check: ${updatedPublications[i].title.substring(0, 30)}...`,
+            variant: "destructive",
+          });
         }
       }
     }
     
-    // Update state with checked publications
+    // Final update and cleanup
     setPublications(updatedPublications);
     setIsChecking(false);
+    setCheckingProgress(100);
+    setCurrentlyChecking("");
     
+    // Success feedback with detailed results
     toast({
-      title: "Check Complete",
-      description: `Checked ${checkedCount} publications. Found ${indexedCount} indexed sources (${evaluatedCount} evaluated).`,
+      title: "JUFO Quality Check Complete",
+      description: `Successfully checked ${checkedCount} publications. Found ${indexedCount} indexed sources (${evaluatedCount} evaluated in JUFO database).`,
     });
+    
+    // Reset progress after a moment
+    setTimeout(() => {
+      setCheckingProgress(0);
+    }, 2000);
   };
 
   const handleExport = () => {
@@ -129,6 +177,34 @@ const Index = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const getCheckButtonContent = () => {
+    if (isChecking) {
+      return (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Checking JUFO Quality...
+        </>
+      );
+    }
+    
+    const uncheckedCount = publications.filter(pub => !pub.checked).length;
+    if (uncheckedCount === 0 && publications.length > 0) {
+      return (
+        <>
+          <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+          All Checked
+        </>
+      );
+    }
+    
+    return (
+      <>
+        <Clock className="mr-2 h-4 w-4" />
+        Check JUFO Quality {uncheckedCount > 0 && `(${uncheckedCount})`}
+      </>
+    );
   };
 
   return (
@@ -180,52 +256,68 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
-          <Button 
-            onClick={checkAllPublications} 
-            disabled={isChecking || publications.length === 0}
-            className="mb-4"
-          >
-            {isChecking ? "Checking..." : "Check JUFO Quality"}
-          </Button>
-
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="mb-4">Export Options</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Export Publications</DialogTitle>
-                <DialogDescription>
-                  Choose your preferred export format.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="format" className="text-right">
-                    Format
-                  </Label>
-                  <Select 
-                    value={exportFormat} 
-                    onValueChange={(value) => setExportFormat(value as "csv" | "excel")}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="csv">CSV (.csv)</SelectItem>
-                      <SelectItem value="excel">Excel (.xlsx)</SelectItem>
-                    </SelectContent>
-                  </Select>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <Button 
+                onClick={checkAllPublications} 
+                disabled={isChecking || publications.length === 0}
+                className="min-w-[200px]"
+              >
+                {getCheckButtonContent()}
+              </Button>
+              
+              {isChecking && (
+                <div className="space-y-2">
+                  <Progress value={checkingProgress} className="w-[300px]" />
+                  <p className="text-sm text-muted-foreground">
+                    {currentlyChecking && `Checking: ${currentlyChecking}`}
+                    {checkingProgress > 0 && ` (${Math.round(checkingProgress)}%)`}
+                  </p>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleExport}>
-                  Export
+              )}
+            </div>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={publications.length === 0}>
+                  Export Results
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Export Publications</DialogTitle>
+                  <DialogDescription>
+                    Export your publication quality screening results in your preferred format.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="format" className="text-right">
+                      Format
+                    </Label>
+                    <Select 
+                      value={exportFormat} 
+                      onValueChange={(value) => setExportFormat(value as "csv" | "excel")}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select export format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="csv">CSV (.csv)</SelectItem>
+                        <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleExport}>
+                    Export {publications.length} Publications
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <PublicationList publications={publications} onExport={handleExport} />
