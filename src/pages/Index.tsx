@@ -1,9 +1,9 @@
-
 import React, { useState } from "react";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
 import PublicationList from "@/components/PublicationList";
 import JufoImport from "@/components/JufoImport";
+import ResultSummary from "@/components/ResultSummary";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
-import { Filter, CheckCircle, Loader2, Clock } from "lucide-react";
+import { Filter, CheckCircle, Loader2, Clock, FileText, FileExcel } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const Index = () => {
@@ -23,7 +23,7 @@ const Index = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [checkingProgress, setCheckingProgress] = useState(0);
   const [currentlyChecking, setCurrentlyChecking] = useState<string>("");
-  const [exportFormat, setExportFormat] = useState<"csv" | "excel">("csv");
+  const [exportFormat, setExportFormat] = useState<"csv" | "excel">("excel");
   const { toast } = useToast();
 
   const addPublication = (publication: Publication) => {
@@ -256,6 +256,10 @@ const Index = () => {
           </div>
         </div>
 
+        {publications.length > 0 && (
+          <ResultSummary publications={publications} />
+        )}
+
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div className="space-y-2">
@@ -304,8 +308,18 @@ const Index = () => {
                         <SelectValue placeholder="Select export format" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="csv">CSV (.csv)</SelectItem>
-                        <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                        <SelectItem value="excel">
+                          <div className="flex items-center gap-2">
+                            <FileExcel className="h-4 w-4" />
+                            Excel (.xlsx)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="csv">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            CSV (.csv)
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
