@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
-import { Filter, CheckCircle, Loader2, Clock, FileText, FileExcel } from "lucide-react";
+import { Filter, CheckCircle, Loader2, Clock, FileText, FileSpreadsheet } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const Index = () => {
@@ -310,7 +310,7 @@ const Index = () => {
                       <SelectContent>
                         <SelectItem value="excel">
                           <div className="flex items-center gap-2">
-                            <FileExcel className="h-4 w-4" />
+                            <FileSpreadsheet className="h-4 w-4" />
                             Excel (.xlsx)
                           </div>
                         </SelectItem>
