@@ -148,8 +148,8 @@ const Index = () => {
     }, 2000);
   };
 
-  const handleExport = () => {
-    if (publications.length === 0) {
+  const handleExport = (publicationsToExport: Publication[] = publications) => {
+    if (publicationsToExport.length === 0) {
       toast({
         title: "No Publications",
         description: "Please add publications to export.",
@@ -160,14 +160,14 @@ const Index = () => {
     
     try {
       if (exportFormat === "csv") {
-        exportToCSV(publications);
+        exportToCSV(publicationsToExport);
       } else {
-        exportToExcel(publications);
+        exportToExcel(publicationsToExport);
       }
       
       toast({
         title: "Export Successful",
-        description: `Exported ${publications.length} publications to ${exportFormat.toUpperCase()}.`,
+        description: `Exported ${publicationsToExport.length} publications to ${exportFormat.toUpperCase()}.`,
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -325,7 +325,7 @@ const Index = () => {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleExport}>
+                  <Button onClick={() => handleExport()}>
                     Export {publications.length} Publications
                   </Button>
                 </DialogFooter>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import {
 
 interface PublicationListProps {
   publications: Publication[];
-  onExport: () => void;
+  onExport: (publicationsToExport?: Publication[]) => void;
 }
 
 const PublicationList: React.FC<PublicationListProps> = ({ publications, onExport }) => {
@@ -167,6 +168,25 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     setDialogOpen(true);
   };
 
+  const handleExportFiltered = () => {
+    onExport(filteredPublications);
+  };
+
+  const getFilterDisplayName = (filter: string): string => {
+    switch (filter) {
+      case "all": return "All Publications";
+      case "3": return "JUFO Level 3";
+      case "2": return "JUFO Level 2";
+      case "1": return "JUFO Level 1";
+      case "0": return "JUFO Level 0";
+      case "absent": return "Absent";
+      case "notEvaluated": return "Not Evaluated";
+      case "notIndexed": return "Not Indexed";
+      case "pending": return "Pending";
+      default: return "Filtered";
+    }
+  };
+
   return (
     <>
       <Card className="w-full">
@@ -233,9 +253,9 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
               </Select>
             </div>
             
-            <Button variant="outline" onClick={onExport}>
+            <Button variant="outline" onClick={handleExportFiltered}>
               <Download className="mr-2 h-4 w-4" />
-              Export
+              Export {filterLevel !== "all" ? `${getFilterDisplayName(filterLevel)} (${filteredPublications.length})` : `(${publications.length})`}
             </Button>
           </div>
         </CardHeader>
