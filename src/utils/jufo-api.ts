@@ -4,11 +4,11 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * Enhanced with ULTRA-STRICT 100% source matching priority, then ISSN/ISBN fallback
+ * Enhanced with improved accuracy through better matching algorithms
  */
 export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
-    console.log(`=== ULTRA-STRICT JUFO QUALITY CHECK ===`);
+    console.log(`=== ENHANCED JUFO QUALITY CHECK (Accuracy Focused) ===`);
     console.log(`Checking JUFO quality for: ${source}`);
     console.log(`ISSN Print: ${issnPrint || 'N/A'}`);
     console.log(`ISSN Online: ${issnOnline || 'N/A'}`);
@@ -27,50 +27,28 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       };
     }
     
-    // If we have imported data, use ULTRA-STRICT matching
+    // If we have imported data, use enhanced matching
     if (hasDatabaseData()) {
-      console.log("Using imported JUFO database for ULTRA-STRICT prioritized search");
+      console.log("Using imported JUFO database for enhanced search");
       
-      // ULTRA-STRICT PRIORITY 1: 100% exact source name matching ONLY
-      console.log("=== ULTRA-STRICT PRIORITY 1: 100% EXACT SOURCE NAME MATCHING ===");
-      const sourceResult = searchJufoDatabase(source);
+      const result = searchJufoDatabase(source, issnPrint, issnOnline, isbn);
       
-      if (sourceResult) {
-        console.log(`✅ 100% ULTRA-STRICT SOURCE MATCH FOUND: ${sourceResult.name}, Level: ${sourceResult.level}`);
-        const { isIndexed, status } = determineIndexingStatus(sourceResult.level);
+      if (result) {
+        console.log(`✅ MATCH FOUND: ${result.name}, Level: ${result.level}`);
+        const { isIndexed, status } = determineIndexingStatus(result.level);
         
         return {
-          level: sourceResult.level,
-          norwegianLevel: sourceResult.norwegianLevel,
+          level: result.level,
+          norwegianLevel: result.norwegianLevel,
           indexed: isIndexed,
-          evaluated: sourceResult.evaluated,
+          evaluated: result.evaluated,
           checked: true,
           status: status
         };
       }
       
-      // ULTRA-STRICT PRIORITY 2: ISSN/ISBN matching ONLY (source < 100% match)
-      console.log("=== ULTRA-STRICT PRIORITY 2: ISSN/ISBN MATCHING (SOURCE < 100%) ===");
-      if (issnPrint || issnOnline || isbn) {
-        const identifierResult = searchJufoDatabase("", issnPrint, issnOnline, isbn);
-        
-        if (identifierResult) {
-          console.log(`✅ ISSN/ISBN MATCH FOUND (DISCARDING < 100% SOURCE): ${identifierResult.name}, Level: ${identifierResult.level}`);
-          const { isIndexed, status } = determineIndexingStatus(identifierResult.level);
-          
-          return {
-            level: identifierResult.level,
-            norwegianLevel: identifierResult.norwegianLevel,
-            indexed: isIndexed,
-            evaluated: identifierResult.evaluated,
-            checked: true,
-            status: status
-          };
-        }
-      }
-      
       // No match found in database
-      console.log(`❌ No 100% ultra-strict source match OR ISSN/ISBN match found in JUFO database`);
+      console.log(`❌ No match found in JUFO database`);
       return { 
         level: "Not found", 
         norwegianLevel: null, 
@@ -85,43 +63,58 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
     console.log("Falling back to enhanced mock database");
     const normalizedSource = source.toLowerCase().trim();
     
-    // Enhanced mock database for testing with more realistic data
+    // Enhanced mock database with more realistic and varied data
     const mockDatabase = {
+      // High-impact journals (Level 3)
       "nature": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "science": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "cell": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
-      "plos one": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      "scientific reports": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      "proceedings of the national academy of sciences": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+      
+      // Good quality journals (Level 2)
       "journal of informetrics": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
       "information processing & management": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true, evaluated: true },
       "management learning": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human-computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human–computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
-      // Add more level 1 journals for testing
+      "acm transactions on computer systems": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
+      "ieee transactions on software engineering": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
+      
+      // Standard journals (Level 1)
+      "plos one": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      "scientific reports": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "bmc bioinformatics": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "frontiers in psychology": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "sustainability": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "ieee access": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      // Add level 0 journals (not indexed but evaluated)
+      "journal of medical internet research": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      "computers & education": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      
+      // Level 0 journals (evaluated but not indexed)
       "predatory journal": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
       "low quality venue": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
-      // Not found journals
-      "new journal": { level: "Not found", norwegianLevel: null, indexed: false, evaluated: false },
+      "questionable research quarterly": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
+      
+      // Variations for testing accuracy
+      "nature communications": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
+      "nature biotechnology": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+      "science advances": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
+      "journal of agricultural sciences": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
     };
     
-    // ULTRA-STRICT matching for mock database - exact match only
-    const matchedKey = Object.keys(mockDatabase).find(k => {
-      const normalizedKey = k.toLowerCase().trim();
+    // Enhanced matching for mock database
+    const exactMatch = Object.keys(mockDatabase).find(key => {
+      const normalizedKey = key.toLowerCase().trim();
       return normalizedKey === normalizedSource;
     });
     
-    // Return mock data with CORRECT status assignment
-    if (matchedKey) {
-      const mockResult = mockDatabase[matchedKey as keyof typeof mockDatabase];
+    // Return mock data with correct status assignment
+    if (exactMatch) {
+      const mockResult = mockDatabase[exactMatch as keyof typeof mockDatabase];
       const { isIndexed, status } = determineIndexingStatus(mockResult.level);
       
-      console.log(`✅ Mock database 100% exact match: ${matchedKey} -> Level: ${mockResult.level}, Status: ${status}`);
+      console.log(`✅ Mock database exact match: ${exactMatch} -> Level: ${mockResult.level}, Status: ${status}`);
       
       return { 
         ...mockResult,
@@ -130,7 +123,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         status: status
       };
     } else {
-      console.log(`❌ No 100% exact match found in mock database for: ${normalizedSource}`);
+      console.log(`❌ No exact match found in mock database for: ${normalizedSource}`);
       return { 
         level: "Not found", 
         norwegianLevel: null, 
