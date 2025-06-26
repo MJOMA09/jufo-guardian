@@ -126,6 +126,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (filterLevel === "pending") return !pub.checked;
     if (filterLevel === "notEvaluated") return pub.evaluated === false;
     if (filterLevel === "absent") return pub.jufoLevel === "Not found";
+    if (filterLevel === "indexed123") return pub.indexed && pub.jufoLevel !== null && pub.jufoLevel !== "Not found" && [1, 2, 3].includes(Number(pub.jufoLevel));
     return pub.jufoLevel?.toString() === filterLevel;
   });
 
@@ -179,6 +180,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
       case "2": return "JUFO Level 2";
       case "1": return "JUFO Level 1";
       case "0": return "JUFO Level 0";
+      case "indexed123": return "JUFO Levels 1-3";
       case "absent": return "Absent";
       case "notEvaluated": return "Not Evaluated";
       case "notIndexed": return "Not Indexed";
@@ -222,6 +224,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Publications</SelectItem>
+                  <SelectItem value="indexed123">JUFO Levels 1-3</SelectItem>
                   <SelectItem value="3">JUFO Level 3</SelectItem>
                   <SelectItem value="2">JUFO Level 2</SelectItem>
                   <SelectItem value="1">JUFO Level 1</SelectItem>
