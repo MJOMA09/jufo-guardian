@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Shield, LogIn } from "lucide-react";
-import { validateCredentials, setAuthenticated, initializeDefaultAdmin, isAuthenticated } from "@/utils/auth";
+import { Shield, LogIn, AlertTriangle, Clock } from "lucide-react";
+import { validateCredentials, setAuthenticated, initializeDefaultAdmin, isAuthenticated, getRemainingLockoutTime } from "@/utils/auth";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as z from "zod";
 
 const loginSchema = z.object({
@@ -23,6 +24,8 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [lockoutTime, setLockoutTime] = useState(0);
+  const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -34,26 +37,63 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     // Initialize default admin on first load
-    initializeDefaultAdmin();
+    const init = async () => {
+      const credentials = await initializeDefaultAdmin();
+      if (credentials.isDefaultPassword) {
+        setShowFirstTimeSetup(true);
+      }
+    };
+    init();
     
     // If already authenticated, redirect to admin
     if (isAuthenticated()) {
       navigate('/admin');
     }
+    
+    // Check for existing lockout
+    const remaining = getRemainingLockoutTime();
+    if (remaining > 0) {
+      setLockoutTime(remaining);
+      const timer = setInterval(() => {
+        const newRemaining = getRemainingLockoutTime();
+        setLockoutTime(newRemaining);
+        if (newRemaining <= 0) {
+          clearInterval(timer);
+        }
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
   }, [navigate]);
 
-  const onSubmit = (values: LoginFormValues) => {
+  const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
 
-    setTimeout(() => {
-      const isValid = validateCredentials(values.username, values.password);
+    try {
+      const result = await validateCredentials(values.username, values.password);
       
-      if (isValid) {
-        setAuthenticated(true);
+      if (result.isLocked) {
+        setLockoutTime(result.lockoutTime! - Date.now());
         toast({
-          title: "Login successful",
-          description: "Welcome to the admin panel",
+          title: "Account Locked",
+          description: "Too many failed attempts. Please try again later.",
+          variant: "destructive"
         });
+      } else if (result.isValid) {
+        setAuthenticated(true);
+        
+        if (result.requiresPasswordChange) {
+          toast({
+            title: "Password Change Required",
+            description: "Please change your password for security.",
+          });
+        } else {
+          toast({
+            title: "Login successful",
+            description: "Welcome to the admin panel",
+          });
+        }
+        
         navigate('/admin');
       } else {
         toast({
@@ -62,9 +102,21 @@ const Login: React.FC = () => {
           variant: "destructive"
         });
       }
-      
+    } catch (error) {
+      toast({
+        title: "Login error",
+        description: "An error occurred during login",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-    }, 500); // Small delay to simulate authentication process
+    }
+  };
+
+  const formatLockoutTime = (milliseconds: number): string => {
+    const minutes = Math.floor(milliseconds / 60000);
+    const seconds = Math.floor((milliseconds % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -80,6 +132,30 @@ const Login: React.FC = () => {
               Login to manage the JUFO reference database
             </CardDescription>
           </CardHeader>
+          
+          {showFirstTimeSetup && (
+            <CardContent>
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>First Time Setup:</strong> Please login with the default credentials and immediately change your password for security.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          )}
+          
+          {lockoutTime > 0 && (
+            <CardContent>
+              <Alert variant="destructive">
+                <Clock className="h-4 w-4" />
+                <AlertDescription>
+                  Account is temporarily locked due to too many failed attempts. 
+                  Try again in: <strong>{formatLockoutTime(lockoutTime)}</strong>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent className="space-y-4">
@@ -90,7 +166,11 @@ const Login: React.FC = () => {
                     <FormItem>
                       <FormLabel>Username</FormLabel>
                       <FormControl>
-                        <Input placeholder="admin" {...field} />
+                        <Input 
+                          placeholder="Enter username" 
+                          {...field} 
+                          disabled={lockoutTime > 0}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -103,7 +183,12 @@ const Login: React.FC = () => {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input 
+                          type="password" 
+                          placeholder="Enter password" 
+                          {...field}
+                          disabled={lockoutTime > 0}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -111,9 +196,15 @@ const Login: React.FC = () => {
                 />
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isLoading || lockoutTime > 0}
+                >
                   {isLoading ? (
                     "Authenticating..."
+                  ) : lockoutTime > 0 ? (
+                    "Account Locked"
                   ) : (
                     <>
                       <LogIn className="mr-2 h-4 w-4" />
@@ -125,9 +216,12 @@ const Login: React.FC = () => {
             </form>
           </Form>
         </Card>
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          <p>Default credentials: username "admin" and password "scifilter2024"</p>
-        </div>
+        
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 text-center text-xs text-muted-foreground">
+            <p>Development mode - Default: admin / SciFilter2024!</p>
+          </div>
+        )}
       </div>
     </div>
   );

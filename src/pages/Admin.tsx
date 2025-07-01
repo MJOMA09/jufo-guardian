@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileSpreadsheet, Upload, Database, Shield, Key } from "lucide-react";
+import { FileSpreadsheet, Upload, Database, Shield, Key, AlertTriangle } from "lucide-react";
 import { importJufoExcel, getDatabaseStats, getLatestDatabaseYear } from "@/utils/jufo-data";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated, setAuthenticated, updatePassword } from "@/utils/auth";
+import { isAuthenticated, setAuthenticated, updatePassword, getPasswordRequirements } from "@/utils/auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -20,6 +20,7 @@ const Admin: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [stats, setStats] = useState({ 
     totalEntries: 0, 
     currentYearEntries: 0,
@@ -94,7 +95,7 @@ const Admin: React.FC = () => {
     navigate('/login');
   };
   
-  const handlePasswordUpdate = () => {
+  const handlePasswordUpdate = async () => {
     // Reset error
     setPasswordError('');
     
@@ -109,14 +110,9 @@ const Admin: React.FC = () => {
       return;
     }
     
-    if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
-      return;
-    }
+    const result = await updatePassword(currentPassword, newPassword);
     
-    const success = updatePassword(currentPassword, newPassword);
-    
-    if (success) {
+    if (result.success) {
       toast({
         title: "Password updated",
         description: "Your password has been updated successfully",
@@ -127,10 +123,13 @@ const Admin: React.FC = () => {
       setNewPassword('');
       setConfirmPassword('');
       setIsPasswordOpen(false);
+      setShowPasswordRequirements(false);
     } else {
-      setPasswordError('Current password is incorrect');
+      setPasswordError(result.error || 'Failed to update password');
     }
   };
+
+  const passwordRequirements = getPasswordRequirements();
 
   return (
     <div className="container mx-auto py-8">
@@ -166,7 +165,7 @@ const Admin: React.FC = () => {
               Security Settings
             </CardTitle>
             <CardDescription>
-              Update your admin password
+              Update your admin password and manage security settings
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -178,6 +177,13 @@ const Admin: React.FC = () => {
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
                 <div className="space-y-4">
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      For security, please use a strong password that meets all requirements below.
+                    </AlertDescription>
+                  </Alert>
+                  
                   <div className="grid gap-2">
                     <Label htmlFor="current-password">Current Password</Label>
                     <Input 
@@ -187,15 +193,31 @@ const Admin: React.FC = () => {
                       onChange={(e) => setCurrentPassword(e.target.value)}
                     />
                   </div>
+                  
                   <div className="grid gap-2">
                     <Label htmlFor="new-password">New Password</Label>
                     <Input 
                       id="new-password" 
                       type="password" 
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setShowPasswordRequirements(e.target.value.length > 0);
+                      }}
                     />
                   </div>
+                  
+                  {showPasswordRequirements && (
+                    <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+                      <p className="font-medium mb-2">Password Requirements:</p>
+                      <ul className="space-y-1">
+                        {passwordRequirements.map((req, index) => (
+                          <li key={index}>• {req}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
                   <div className="grid gap-2">
                     <Label htmlFor="confirm-password">Confirm New Password</Label>
                     <Input 
@@ -205,9 +227,14 @@ const Admin: React.FC = () => {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                   </div>
+                  
                   {passwordError && (
-                    <p className="text-sm font-medium text-destructive">{passwordError}</p>
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>{passwordError}</AlertDescription>
+                    </Alert>
                   )}
+                  
                   <Button onClick={handlePasswordUpdate} className="w-full">
                     Update Password
                   </Button>
