@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,9 +37,14 @@ const Login: React.FC = () => {
   useEffect(() => {
     // Initialize default admin on first load
     const init = async () => {
-      const credentials = await initializeDefaultAdmin();
-      if (credentials.isDefaultPassword) {
+      const result = await initializeDefaultAdmin();
+      if (result.isFirstTime) {
         setShowFirstTimeSetup(true);
+        toast({
+          title: "First Time Setup",
+          description: "Check the browser console for your admin credentials.",
+          duration: 10000,
+        });
       }
     };
     init();
@@ -64,7 +68,7 @@ const Login: React.FC = () => {
       
       return () => clearInterval(timer);
     }
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
@@ -138,7 +142,8 @@ const Login: React.FC = () => {
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>First Time Setup:</strong> Please login with the default credentials and immediately change your password for security.
+                  <strong>First Time Setup:</strong> Your admin credentials have been generated. 
+                  Please check the browser console (F12 → Console tab) for your login details.
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -217,9 +222,9 @@ const Login: React.FC = () => {
           </Form>
         </Card>
         
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === 'development' && showFirstTimeSetup && (
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            <p>Development mode - Default: admin / SciFilter2024!</p>
+            <p>Development mode - Check console for credentials (F12)</p>
           </div>
         )}
       </div>

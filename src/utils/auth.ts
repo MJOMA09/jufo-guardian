@@ -1,4 +1,3 @@
-
 interface AdminCredentials {
   username: string;
   password: string;
@@ -69,26 +68,62 @@ export const getStoredCredentials = (): AdminCredentials | null => {
   }
 };
 
-export const initializeDefaultAdmin = async (): Promise<AdminCredentials> => {
-  const existing = getStoredCredentials();
-  if (!existing) {
-    const config = getEnvConfig();
-    const defaultPassword = 'SciFilter2024!';
-    const hashedPassword = await hashPassword(defaultPassword);
-    
-    const defaultCredentials: AdminCredentials = {
-      username: config.defaultUsername,
-      password: hashedPassword,
-      isDefaultPassword: true,
-      lastPasswordChange: Date.now(),
-      failedAttempts: 0,
-      lockedUntil: 0
-    };
-    
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(defaultCredentials));
-    return defaultCredentials;
+const generateSecurePassword = (): string => {
+  const length = 16;
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  
+  // Ensure at least one character from each required category
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // uppercase
+  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // lowercase
+  password += '0123456789'[Math.floor(Math.random() * 10)]; // number
+  password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // special
+  
+  // Fill the rest randomly
+  for (let i = 4; i < length; i++) {
+    password += charset[Math.floor(Math.random() * charset.length)];
   }
-  return existing;
+  
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+};
+
+export const initializeDefaultAdmin = async (): Promise<{ credentials: AdminCredentials; isFirstTime: boolean }> => {
+  const existing = getStoredCredentials();
+  if (existing) {
+    return { credentials: existing, isFirstTime: false };
+  }
+  
+  const config = getEnvConfig();
+  const generatedPassword = generateSecurePassword();
+  const hashedPassword = await hashPassword(generatedPassword);
+  
+  const defaultCredentials: AdminCredentials = {
+    username: config.defaultUsername,
+    password: hashedPassword,
+    isDefaultPassword: true,
+    lastPasswordChange: Date.now(),
+    failedAttempts: 0,
+    lockedUntil: 0
+  };
+  
+  localStorage.setItem(ADMIN_KEY, JSON.stringify(defaultCredentials));
+  
+  // Display the password in console for first-time setup
+  console.log(`
+╔══════════════════════════════════════════════════════════════╗
+║                    SCIFILTER FIRST TIME SETUP               ║
+╠══════════════════════════════════════════════════════════════╣
+║ Username: ${config.defaultUsername.padEnd(47)} ║
+║ Password: ${generatedPassword.padEnd(47)} ║
+║                                                              ║
+║ ⚠️  IMPORTANT: Copy this password now!                       ║
+║ This is the only time it will be displayed.                 ║
+║ You will be required to change it after first login.       ║
+╚══════════════════════════════════════════════════════════════╝
+  `);
+  
+  return { credentials: defaultCredentials, isFirstTime: true };
 };
 
 export const validateCredentials = async (username: string, password: string): Promise<{ isValid: boolean; requiresPasswordChange?: boolean; isLocked?: boolean; lockoutTime?: number }> => {
