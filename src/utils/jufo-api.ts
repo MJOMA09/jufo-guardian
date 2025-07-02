@@ -4,19 +4,19 @@ import { searchJufoDatabase, hasDatabaseData } from "./jufo-data";
 
 /**
  * Check publication quality in the JUFO portal
- * RESTORED TO MAXIMUM ACCURACY AND RELIABILITY
+ * ENHANCED FOR 100% ACCURACY WITH EXACT MATCHING
  */
 export const checkJufoQuality = async (source: string, issnPrint?: string, issnOnline?: string, isbn?: string): Promise<JufoResponse & { status: 'Indexed' | 'Not Indexed' }> => {
   try {
-    console.log(`=== JUFO QUALITY CHECK (MAXIMUM RELIABILITY MODE) ===`);
+    console.log(`=== JUFO QUALITY CHECK (100% EXACT MATCHING) ===`);
     console.log(`Source: "${source}"`);
     console.log(`ISSN Print: "${issnPrint || 'N/A'}"`);
     console.log(`ISSN Online: "${issnOnline || 'N/A'}"`);
     console.log(`ISBN: "${isbn || 'N/A'}"`);
     
-    // Handle empty or unknown sources with high reliability
+    // Handle empty or unknown sources
     if (!source || source.trim() === "" || source.toLowerCase().includes("unknown")) {
-      console.log("✅ RELIABLE: Empty/unknown source detected");
+      console.log("✅ Empty/unknown source detected");
       return { 
         level: "Not found", 
         norwegianLevel: null, 
@@ -27,9 +27,9 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       };
     }
     
-    // Priority: Use imported database with enhanced reliability
+    // Use imported database if available
     if (hasDatabaseData()) {
-      console.log("✅ USING IMPORTED DATABASE (High Reliability Mode)");
+      console.log("✅ USING IMPORTED DATABASE (100% Exact Match Mode)");
       
       const result = searchJufoDatabase(source, issnPrint, issnOnline, isbn);
       
@@ -58,137 +58,48 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       };
     }
     
-    // Fallback: Enhanced mock database with maximum reliability
-    console.log("✅ USING ENHANCED MOCK DATABASE (High Reliability Mode)");
+    // Fallback: Mock database with 100% exact matching
+    console.log("✅ USING MOCK DATABASE (100% Exact Match Mode)");
     const normalizedSource = source.toLowerCase().trim();
     
-    // Comprehensive mock database with high-confidence entries
-    const reliableMockDatabase = {
-      // Tier 1: Top-tier journals (Level 3)
+    // Mock database for testing - requires 100% exact matching
+    const mockDatabase = {
+      // Exact entries only - no partial matching allowed
       "nature": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "science": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "cell": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "proceedings of the national academy of sciences": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "new england journal of medicine": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
       "lancet": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
-      "nature biotechnology": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
-      "nature medicine": { level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
-      
-      // Tier 2: High-quality journals (Level 2)
       "nature communications": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
       "science advances": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
       "journal of informetrics": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
       "information processing & management": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
       "international journal of human-computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
-      "international journal of human–computer interaction": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
-      "acm transactions on computer systems": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
-      "ieee transactions on software engineering": { level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
-      "management learning": { level: 2, norwegianLevel: 1, indexed: true, evaluated: true },
-      "international conference on information systems": { level: 2, norwegianLevel: null, indexed: true, evaluated: true },
-      
-      // Tier 3: Standard indexed journals (Level 1)
       "plos one": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "scientific reports": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      "bmc bioinformatics": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      "frontiers in psychology": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "sustainability": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "ieee access": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      "journal of medical internet research": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      "computers & education": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "journal of agricultural sciences": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
       "applied sciences": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
-      
-      // Tier 4: Not indexed but evaluated (Level 0)
-      "predatory journal": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
-      "low quality venue": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
-      "questionable research quarterly": { level: 0, norwegianLevel: null, indexed: false, evaluated: true },
     };
     
-    // ENHANCED MATCHING ALGORITHM - Maximum Reliability
-    let bestMatch = null;
-    let bestScore = 0;
-    let matchType = "";
-    
-    // Step 1: EXACT MATCH (100% confidence)
-    const exactMatch = Object.keys(reliableMockDatabase).find(key => {
+    // STEP 1: 100% EXACT SOURCE NAME MATCHING
+    console.log("--- STEP 1: 100% EXACT SOURCE NAME MATCHING ---");
+    const exactMatch = Object.keys(mockDatabase).find(key => {
       const normalizedKey = key.toLowerCase().trim();
-      return normalizedKey === normalizedSource;
+      const isExactMatch = normalizedKey === normalizedSource;
+      if (isExactMatch) {
+        console.log(`✅ 100% EXACT MATCH: "${source}" === "${key}"`);
+      }
+      return isExactMatch;
     });
     
     if (exactMatch) {
-      bestMatch = exactMatch;
-      bestScore = 1.0;
-      matchType = "EXACT";
-      console.log(`🎯 EXACT MATCH FOUND: "${exactMatch}" (Score: 1.00)`);
-    } else {
-      // Step 2: SUBSTRING MATCHING (High confidence)
-      for (const key of Object.keys(reliableMockDatabase)) {
-        const normalizedKey = key.toLowerCase().trim();
-        
-        // Check if source contains the key or vice versa (high confidence)
-        if (normalizedSource.includes(normalizedKey) && normalizedKey.length >= 10) {
-          const score = 0.95;
-          if (score > bestScore) {
-            bestMatch = key;
-            bestScore = score;
-            matchType = "SUBSTRING_CONTAINS";
-          }
-        } else if (normalizedKey.includes(normalizedSource) && normalizedSource.length >= 10) {
-          const score = 0.90;
-          if (score > bestScore) {
-            bestMatch = key;
-            bestScore = score;
-            matchType = "SUBSTRING_WITHIN";
-          }
-        }
-      }
-      
-      // Step 3: WORD-BASED MATCHING (Medium-high confidence)
-      if (!bestMatch || bestScore < 0.85) {
-        for (const key of Object.keys(reliableMockDatabase)) {
-          const normalizedKey = key.toLowerCase().trim();
-          
-          const sourceWords = normalizedSource.split(/\s+/).filter(word => word.length > 3);
-          const keyWords = normalizedKey.split(/\s+/).filter(word => word.length > 3);
-          
-          if (sourceWords.length === 0 || keyWords.length === 0) continue;
-          
-          // Count exact word matches
-          const exactWordMatches = sourceWords.filter(sourceWord =>
-            keyWords.some(keyWord => sourceWord === keyWord)
-          ).length;
-          
-          // Count partial word matches
-          const partialWordMatches = sourceWords.filter(sourceWord =>
-            keyWords.some(keyWord => 
-              sourceWord.includes(keyWord) || keyWord.includes(sourceWord)
-            )
-          ).length;
-          
-          const totalMatches = exactWordMatches + (partialWordMatches * 0.7);
-          const maxWords = Math.max(sourceWords.length, keyWords.length);
-          const wordScore = totalMatches / maxWords;
-          
-          // High threshold for word matching to ensure reliability
-          if (wordScore >= 0.75 && exactWordMatches >= 2 && wordScore > bestScore) {
-            bestMatch = key;
-            bestScore = wordScore;
-            matchType = "WORD_BASED";
-          }
-        }
-      }
-      
-      if (bestMatch) {
-        console.log(`🎯 ${matchType} MATCH: "${bestMatch}" (Score: ${bestScore.toFixed(2)})`);
-      }
-    }
-    
-    // Return results with high confidence
-    if (bestMatch && bestScore >= 0.75) {
-      const mockResult = reliableMockDatabase[bestMatch as keyof typeof reliableMockDatabase];
+      const mockResult = mockDatabase[exactMatch as keyof typeof mockDatabase];
       const { isIndexed, status } = determineIndexingStatus(mockResult.level);
       
-      console.log(`✅ RELIABLE MATCH CONFIRMED: "${bestMatch}" -> Level ${mockResult.level}, Status: ${status}`);
+      console.log(`🎯 EXACT SOURCE MATCH CONFIRMED: "${exactMatch}" -> Level ${mockResult.level}, Status: ${status}`);
       
       return { 
         ...mockResult,
@@ -196,17 +107,68 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         checked: true,
         status: status
       };
-    } else {
-      console.log(`❌ NO RELIABLE MATCH FOUND for: "${normalizedSource}" (Best score: ${bestScore.toFixed(2)})`);
-      return { 
-        level: "Not found", 
-        norwegianLevel: null, 
-        indexed: false, 
-        evaluated: false, 
-        checked: true, 
-        status: 'Not Indexed' 
-      };
     }
+    
+    console.log(`❌ NO 100% EXACT SOURCE MATCH for: "${normalizedSource}"`);
+    
+    // STEP 2: ISSN/ISBN IDENTIFIER MATCHING (Only if source name didn't match 100%)
+    console.log("--- STEP 2: ISSN/ISBN IDENTIFIER MATCHING ---");
+    
+    if (issnPrint || issnOnline || isbn) {
+      console.log("Checking identifiers since source name didn't match 100%...");
+      
+      // Mock ISSN/ISBN database for testing
+      const identifierDatabase = {
+        "0028-0836": { name: "Nature", level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+        "0036-8075": { name: "Science", level: 3, norwegianLevel: 2, indexed: true, evaluated: true },
+        "2041-1723": { name: "Nature Communications", level: 2, norwegianLevel: 2, indexed: true, evaluated: true },
+        "1932-6203": { name: "PLOS ONE", level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+        "2045-2322": { name: "Scientific Reports", level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+        "0168-1699": { name: "Journal of Agricultural Sciences", level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
+      };
+      
+      const identifiersToCheck = [issnPrint, issnOnline, isbn].filter(Boolean);
+      
+      for (const identifier of identifiersToCheck) {
+        if (identifier) {
+          const normalizedId = identifier.replace(/[^0-9X]/gi, '');
+          
+          for (const [dbId, entry] of Object.entries(identifierDatabase)) {
+            const normalizedDbId = dbId.replace(/[^0-9X]/gi, '');
+            
+            if (normalizedId === normalizedDbId) {
+              console.log(`✅ IDENTIFIER MATCH: ${identifier} -> "${entry.name}" (Level ${entry.level})`);
+              const { isIndexed, status } = determineIndexingStatus(entry.level);
+              
+              return {
+                level: entry.level,
+                norwegianLevel: entry.norwegianLevel,
+                indexed: isIndexed,
+                evaluated: entry.evaluated,
+                checked: true,
+                status: status
+              };
+            }
+          }
+        }
+      }
+      
+      console.log("❌ NO IDENTIFIER MATCHES FOUND");
+    } else {
+      console.log("No identifiers provided for checking");
+    }
+    
+    // STEP 3: NOT FOUND
+    console.log(`❌ NO MATCHES FOUND for: "${normalizedSource}"`);
+    return { 
+      level: "Not found", 
+      norwegianLevel: null, 
+      indexed: false, 
+      evaluated: false, 
+      checked: true, 
+      status: 'Not Indexed' 
+    };
+    
   } catch (error) {
     console.error("❌ CRITICAL ERROR in JUFO quality check:", error);
     return { 
@@ -221,8 +183,8 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
 };
 
 /**
- * RELIABLE indexing status determination
- * CRITICAL: Only levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
+ * Determine indexing status based on JUFO level
+ * Levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
  */
 const determineIndexingStatus = (level: number | string | null | undefined): { isIndexed: boolean, status: 'Indexed' | 'Not Indexed' } => {
   if (level === null || level === undefined || level === "Not found") {
@@ -232,7 +194,6 @@ const determineIndexingStatus = (level: number | string | null | undefined): { i
   const levelNum = typeof level === 'number' ? level : parseInt(String(level), 10);
   
   if (!isNaN(levelNum)) {
-    // RELIABLE LOGIC: Levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
     if (levelNum >= 1 && levelNum <= 3) {
       return { isIndexed: true, status: 'Indexed' };
     } else if (levelNum === 0) {
