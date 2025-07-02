@@ -103,18 +103,57 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
       "journal of agricultural sciences": { level: 1, norwegianLevel: 1, indexed: true, evaluated: true },
     };
     
-    // Enhanced matching for mock database
+    // Enhanced matching for mock database with fuzzy matching for better accuracy
+    let bestMatch = null;
+    let bestScore = 0;
+    
+    // First try exact match
     const exactMatch = Object.keys(mockDatabase).find(key => {
       const normalizedKey = key.toLowerCase().trim();
       return normalizedKey === normalizedSource;
     });
     
-    // Return mock data with correct status assignment
     if (exactMatch) {
-      const mockResult = mockDatabase[exactMatch as keyof typeof mockDatabase];
+      bestMatch = exactMatch;
+      bestScore = 1.0;
+    } else {
+      // Try fuzzy matching for better accuracy
+      for (const key of Object.keys(mockDatabase)) {
+        const normalizedKey = key.toLowerCase().trim();
+        
+        // Check if source contains the key or vice versa
+        if (normalizedSource.includes(normalizedKey) || normalizedKey.includes(normalizedSource)) {
+          const score = Math.max(normalizedSource.length, normalizedKey.length) / 
+                       Math.min(normalizedSource.length, normalizedKey.length);
+          if (score > bestScore && score >= 0.7) {
+            bestMatch = key;
+            bestScore = score;
+          }
+        }
+        
+        // Check for partial word matches
+        const sourceWords = normalizedSource.split(/\s+/);
+        const keyWords = normalizedKey.split(/\s+/);
+        const commonWords = sourceWords.filter(word => 
+          word.length > 3 && keyWords.some(keyWord => keyWord.includes(word) || word.includes(keyWord))
+        );
+        
+        if (commonWords.length >= 2) {
+          const wordScore = commonWords.length / Math.max(sourceWords.length, keyWords.length);
+          if (wordScore > bestScore && wordScore >= 0.6) {
+            bestMatch = key;
+            bestScore = wordScore;
+          }
+        }
+      }
+    }
+    
+    // Return mock data with correct status assignment
+    if (bestMatch) {
+      const mockResult = mockDatabase[bestMatch as keyof typeof mockDatabase];
       const { isIndexed, status } = determineIndexingStatus(mockResult.level);
       
-      console.log(`✅ Mock database exact match: ${exactMatch} -> Level: ${mockResult.level}, Status: ${status}`);
+      console.log(`✅ Mock database match: ${bestMatch} -> Level: ${mockResult.level}, Status: ${status}, Score: ${bestScore.toFixed(2)}`);
       
       return { 
         ...mockResult,
@@ -123,7 +162,7 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
         status: status
       };
     } else {
-      console.log(`❌ No exact match found in mock database for: ${normalizedSource}`);
+      console.log(`❌ No match found in mock database for: ${normalizedSource}`);
       return { 
         level: "Not found", 
         norwegianLevel: null, 
