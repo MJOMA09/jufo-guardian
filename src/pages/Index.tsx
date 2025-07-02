@@ -76,9 +76,6 @@ const Index = () => {
     
     const totalToCheck = uncheckedPublications.length;
     
-    console.log(`=== STARTING BATCH JUFO CHECK ===`);
-    console.log(`Total publications to check: ${totalToCheck}`);
-    
     // Check each unchecked publication
     for (let i = 0; i < updatedPublications.length; i++) {
       if (!updatedPublications[i].checked) {
@@ -89,19 +86,13 @@ const Index = () => {
             : updatedPublications[i].title;
           setCurrentlyChecking(shortTitle);
           
-          console.log(`--- Checking publication ${checkedCount + 1}/${totalToCheck} ---`);
-          console.log(`Title: ${updatedPublications[i].title}`);
-          console.log(`Source: ${updatedPublications[i].source}`);
-          
-          // Check JUFO quality with all available identifiers
+          // Check JUFO quality with ISSN fields
           const result = await checkJufoQuality(
             updatedPublications[i].source,
             updatedPublications[i].issnPrint,
             updatedPublications[i].issnOnline,
             updatedPublications[i].isbn
           );
-          
-          console.log(`Result: Level ${result.level}, Indexed: ${result.indexed}, Status: ${result.status}`);
           
           // Update publication with result
           updatedPublications[i] = {
@@ -125,26 +116,11 @@ const Index = () => {
           // Update state incrementally for better UX
           setPublications([...updatedPublications]);
           
-          // Small delay to show progress and prevent overwhelming the system
-          await new Promise(resolve => setTimeout(resolve, 150));
+          // Small delay to show progress (can be removed for faster processing)
+          await new Promise(resolve => setTimeout(resolve, 100));
           
         } catch (error) {
           console.error("Error checking publication:", error);
-          console.error(`Failed publication: ${updatedPublications[i].title}`);
-          
-          // Mark as checked even if failed to avoid infinite loops
-          updatedPublications[i] = {
-            ...updatedPublications[i],
-            jufoLevel: "Not found",
-            norwegianLevel: null,
-            indexed: false,
-            evaluated: false,
-            checked: true,
-            status: 'Not Indexed',
-          };
-          
-          checkedCount++;
-          
           toast({
             title: "Check Failed",
             description: `Failed to check: ${updatedPublications[i].title.substring(0, 30)}...`,
@@ -159,9 +135,6 @@ const Index = () => {
     setIsChecking(false);
     setCheckingProgress(100);
     setCurrentlyChecking("");
-    
-    console.log(`=== BATCH JUFO CHECK COMPLETE ===`);
-    console.log(`Checked: ${checkedCount}, Indexed: ${indexedCount}, Evaluated: ${evaluatedCount}`);
     
     // Success feedback with detailed results
     toast({
