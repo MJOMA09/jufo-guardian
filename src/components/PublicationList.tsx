@@ -50,7 +50,6 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const getJufoLevelText = (publication: Publication): string => {
-    // For unknown sources or empty sources
     if (!publication.source || publication.source.toLowerCase().includes("unknown")) {
       return "Not checked";
     }
@@ -60,14 +59,12 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (!publication.indexed && publication.jufoLevel === null) return "Not indexed";
     if (publication.evaluated === false) return "Not evaluated";
     
-    // Show ALL levels including 0 and "Not found" - they are all valid JUFO levels
     return publication.jufoLevel !== null && publication.jufoLevel !== undefined
       ? publication.jufoLevel.toString()
       : "Unknown";
   };
 
   const getNorwegianLevelText = (publication: Publication): string => {
-    // For unknown sources or empty sources
     if (!publication.source || publication.source.toLowerCase().includes("unknown")) {
       return "Not checked";
     }
@@ -77,7 +74,6 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     if (!publication.indexed && publication.jufoLevel === null) return "N/A";
     if (publication.evaluated === false) return "N/A";
     
-    // Show Norwegian level if it exists, including 0
     return publication.norwegianLevel !== null && publication.norwegianLevel !== undefined
       ? publication.norwegianLevel.toString()
       : "N/A";
@@ -88,7 +84,6 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
       return <Badge variant="outline" className="bg-gray-100">Pending</Badge>;
     }
     
-    // Use the status from the API response which correctly handles indexing logic
     const status = publication.status || 'Not Indexed';
     return (
       <Badge 
@@ -100,38 +95,20 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     );
   };
 
-  // FIXED: Enhanced ISSN/ISBN display functions - always show all available identifiers
-  const displayISSN = (issn: string | undefined, publication: Publication): string => {
-    // Always show ISSN if available - transparency is key for verification
-    if (!issn || issn.trim() === '') return '-';
+  // FIXED: Always display ISSN/ISBN when available
+  const displayIdentifier = (identifier: string | undefined): string => {
+    if (!identifier || identifier.trim() === '') return '-';
     
-    // Clean and format ISSN properly
-    const cleaned = issn.replace(/[^0-9X]/gi, '');
-    if (cleaned.length === 8) {
-      return `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
+    // Clean and format properly
+    const cleaned = identifier.replace(/[^0-9X-]/gi, '');
+    
+    // Format ISSN if 8 digits
+    if (cleaned.replace(/[^0-9X]/gi, '').length === 8) {
+      const digits = cleaned.replace(/[^0-9X]/gi, '');
+      return `${digits.substring(0, 4)}-${digits.substring(4)}`;
     }
     
-    // Return original if not standard 8-digit format
-    return issn.trim();
-  };
-
-  const displayISBN = (isbn: string | undefined, publication: Publication): string => {
-    // Always show ISBN if available - transparency is key for verification
-    if (!isbn || isbn.trim() === '') return '-';
-    return isbn.trim();
-  };
-
-  // NEW: Display general ISSN if available
-  const displayGeneralISSN = (issn: string | undefined): string => {
-    if (!issn || issn.trim() === '') return '-';
-    
-    // Clean and format ISSN properly
-    const cleaned = issn.replace(/[^0-9X]/gi, '');
-    if (cleaned.length === 8) {
-      return `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
-    }
-    
-    return issn.trim();
+    return identifier.trim();
   };
 
   const filteredPublications = publications.filter((pub) => {
@@ -161,7 +138,6 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     }
   });
 
-  // Pagination logic with proper bounds checking
   const totalPages = Math.ceil(sortedPublications.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -175,7 +151,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(parseInt(value));
-    setCurrentPage(1); // Reset to first page when changing items per page
+    setCurrentPage(1);
   };
 
   const handleViewDetails = (publication: Publication) => {
@@ -331,16 +307,16 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                           {pub.source}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayISSN(pub.issnPrint, pub)}
+                          {displayIdentifier(pub.issnPrint)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayISSN(pub.issnOnline, pub)}
+                          {displayIdentifier(pub.issnOnline)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayGeneralISSN(pub.issn)}
+                          {displayIdentifier(pub.issn)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
-                          {displayISBN(pub.isbn, pub)}
+                          {displayIdentifier(pub.isbn)}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -383,7 +359,6 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                       />
                     </PaginationItem>
                     
-                    {/* Smart pagination display */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNumber;
                       if (totalPages <= 5) {
@@ -489,29 +464,29 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
-                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnPrint, selectedPublication)}</p>
+                  <p className="font-mono text-sm">{displayIdentifier(selectedPublication.issnPrint)}</p>
                 </div>
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
-                  <p className="font-mono text-sm">{displayISSN(selectedPublication.issnOnline, selectedPublication)}</p>
+                  <p className="font-mono text-sm">{displayIdentifier(selectedPublication.issnOnline)}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">ISSN General</h3>
+                  <p className="font-mono text-sm">{displayIdentifier(selectedPublication.issn)}</p>
                 </div>
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
-                  <p className="font-mono text-sm">{displayISBN(selectedPublication.isbn, selectedPublication)}</p>
+                  <p className="font-mono text-sm">{displayIdentifier(selectedPublication.isbn)}</p>
                 </div>
               </div>
-              
-              {selectedPublication.issn && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">ISSN (General)</h3>
-                  <p className="font-mono text-sm">{displayGeneralISSN(selectedPublication.issn)}</p>
-                </div>
-              )}
               
               {selectedPublication.doi && (
                 <div>

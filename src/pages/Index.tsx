@@ -68,53 +68,48 @@ const Index = () => {
     setCheckingProgress(0);
     setCurrentlyChecking("");
     
-    // Create a copy of publications to ensure immutability
-    const updatedPublications = publications.map(pub => ({ ...pub }));
+    console.log(`=== STARTING BATCH JUFO CHECK (ACCURACY FIXED) ===`);
+    console.log(`Total publications to check: ${uncheckedPublications.length}`);
+    
+    const updatedPublications = [...publications];
     let checkedCount = 0;
     let indexedCount = 0;
     let evaluatedCount = 0;
-    
-    const totalToCheck = uncheckedPublications.length;
-    
-    console.log(`=== STARTING BATCH JUFO CHECK ===`);
-    console.log(`Total publications to check: ${totalToCheck}`);
     
     // Check each unchecked publication
     for (let i = 0; i < updatedPublications.length; i++) {
       if (!updatedPublications[i].checked) {
         try {
-          // Update current checking status
           const shortTitle = updatedPublications[i].title.length > 50 
             ? updatedPublications[i].title.substring(0, 50) + "..."
             : updatedPublications[i].title;
           setCurrentlyChecking(shortTitle);
           
-          console.log(`--- Checking publication ${checkedCount + 1}/${totalToCheck} ---`);
+          console.log(`--- Checking publication ${checkedCount + 1}/${uncheckedPublications.length} ---`);
           console.log(`Title: ${updatedPublications[i].title}`);
           console.log(`Source: ${updatedPublications[i].source}`);
-          console.log(`ISSN Print: "${updatedPublications[i].issnPrint || 'N/A'}"`);
-          console.log(`ISSN Online: "${updatedPublications[i].issnOnline || 'N/A'}"`);
-          console.log(`ISBN: "${updatedPublications[i].isbn || 'N/A'}"`);
-          console.log(`ISSN General: "${updatedPublications[i].issn || 'N/A'}"`);
           
-          // Preserve original identifiers before checking
-          const originalIssnPrint = updatedPublications[i].issnPrint;
-          const originalIssnOnline = updatedPublications[i].issnOnline;
-          const originalIsbn = updatedPublications[i].isbn;
-          const originalIssn = updatedPublications[i].issn;
+          // CRITICAL: Preserve ALL original identifiers
+          const originalData = {
+            issnPrint: updatedPublications[i].issnPrint,
+            issnOnline: updatedPublications[i].issnOnline,
+            isbn: updatedPublications[i].isbn,
+            issn: updatedPublications[i].issn,
+          };
           
-          // Check JUFO quality with all available identifiers
+          console.log(`Identifiers - Print: "${originalData.issnPrint || 'N/A'}", Online: "${originalData.issnOnline || 'N/A'}", ISBN: "${originalData.isbn || 'N/A'}", General: "${originalData.issn || 'N/A'}"`);
+          
+          // Check JUFO quality
           const result = await checkJufoQuality(
             updatedPublications[i].source,
-            originalIssnPrint,
-            originalIssnOnline,
-            originalIsbn
+            originalData.issnPrint,
+            originalData.issnOnline,
+            originalData.isbn
           );
           
-          console.log(`Result: Level ${result.level}, Indexed: ${result.indexed}, Status: ${result.status}`);
-          console.log(`Preserving identifiers - Print: "${originalIssnPrint}", Online: "${originalIssnOnline}", ISBN: "${originalIsbn}", General: "${originalIssn}"`);
+          console.log(`RESULT: Level ${result.level}, Indexed: ${result.indexed}, Status: ${result.status}`);
           
-          // Update publication with result - ENSURE ALL IDENTIFIERS ARE PRESERVED
+          // Update with results while preserving ALL identifiers
           updatedPublications[i] = {
             ...updatedPublications[i],
             jufoLevel: result.level,
@@ -123,38 +118,33 @@ const Index = () => {
             evaluated: result.evaluated,
             checked: true,
             status: result.status,
-            // CRITICAL: Preserve ALL identifier fields exactly as they were
-            issnPrint: originalIssnPrint,
-            issnOnline: originalIssnOnline,
-            isbn: originalIsbn,
-            issn: originalIssn,
+            // PRESERVE ALL IDENTIFIERS
+            issnPrint: originalData.issnPrint,
+            issnOnline: originalData.issnOnline,
+            isbn: originalData.isbn,
+            issn: originalData.issn,
           };
           
           checkedCount++;
           if (result.indexed) indexedCount++;
           if (result.evaluated) evaluatedCount++;
           
-          // Update progress
-          const progress = (checkedCount / totalToCheck) * 100;
-          setCheckingProgress(progress);
-          
-          // Update state incrementally for better UX
+          setCheckingProgress((checkedCount / uncheckedPublications.length) * 100);
           setPublications([...updatedPublications]);
           
-          // Small delay to show progress and prevent overwhelming the system
-          await new Promise(resolve => setTimeout(resolve, 150));
+          await new Promise(resolve => setTimeout(resolve, 100));
           
         } catch (error) {
           console.error("Error checking publication:", error);
-          console.error(`Failed publication: ${updatedPublications[i].title}`);
           
-          // Preserve identifiers even on failure
-          const originalIssnPrint = updatedPublications[i].issnPrint;
-          const originalIssnOnline = updatedPublications[i].issnOnline;
-          const originalIsbn = updatedPublications[i].isbn;
-          const originalIssn = updatedPublications[i].issn;
+          // Preserve identifiers on failure
+          const originalData = {
+            issnPrint: updatedPublications[i].issnPrint,
+            issnOnline: updatedPublications[i].issnOnline,
+            isbn: updatedPublications[i].isbn,
+            issn: updatedPublications[i].issn,
+          };
           
-          // Mark as checked even if failed to avoid infinite loops
           updatedPublications[i] = {
             ...updatedPublications[i],
             jufoLevel: "Not found",
@@ -163,43 +153,32 @@ const Index = () => {
             evaluated: false,
             checked: true,
             status: 'Not Indexed',
-            // CRITICAL: Preserve identifiers even on failure
-            issnPrint: originalIssnPrint,
-            issnOnline: originalIssnOnline,
-            isbn: originalIsbn,
-            issn: originalIssn,
+            // PRESERVE ALL IDENTIFIERS
+            issnPrint: originalData.issnPrint,
+            issnOnline: originalData.issnOnline,
+            isbn: originalData.isbn,
+            issn: originalData.issn,
           };
           
           checkedCount++;
-          
-          toast({
-            title: "Check Failed",
-            description: `Failed to check: ${updatedPublications[i].title.substring(0, 30)}...`,
-            variant: "destructive",
-          });
         }
       }
     }
     
-    // Final update and cleanup
     setPublications(updatedPublications);
     setIsChecking(false);
     setCheckingProgress(100);
     setCurrentlyChecking("");
     
-    console.log(`=== BATCH JUFO CHECK COMPLETE ===`);
+    console.log(`=== BATCH CHECK COMPLETE ===`);
     console.log(`Checked: ${checkedCount}, Indexed: ${indexedCount}, Evaluated: ${evaluatedCount}`);
     
-    // Success feedback with detailed results
     toast({
       title: "JUFO Quality Check Complete",
-      description: `Successfully checked ${checkedCount} publications. Found ${indexedCount} indexed sources (${evaluatedCount} evaluated in JUFO database).`,
+      description: `Successfully checked ${checkedCount} publications. Found ${indexedCount} indexed sources.`,
     });
     
-    // Reset progress after a moment
-    setTimeout(() => {
-      setCheckingProgress(0);
-    }, 2000);
+    setTimeout(() => setCheckingProgress(0), 2000);
   };
 
   const handleExport = (publicationsToExport: Publication[] = publications) => {
