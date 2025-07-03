@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Publication } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -101,10 +100,10 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     );
   };
 
-  // Enhanced ISSN/ISBN display functions - show all available identifiers
+  // CORRECTED: Enhanced ISSN/ISBN display functions - show all available identifiers for checked publications
   const displayISSN = (issn: string | undefined, publication: Publication): string => {
-    // Show ISSN for all publications that have been checked, regardless of level
-    if (!publication.checked || !issn) return '-';
+    // Always show ISSN if available, regardless of check status for better transparency
+    if (!issn || issn.trim() === '') return '-';
     
     // Ensure proper ISSN format (XXXX-XXXX)
     const cleaned = issn.replace(/[^0-9X]/gi, '');
@@ -115,8 +114,8 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   };
 
   const displayISBN = (isbn: string | undefined, publication: Publication): string => {
-    // Show ISBN for all publications that have been checked, regardless of level
-    if (!publication.checked || !isbn) return '-';
+    // Always show ISBN if available, regardless of check status for better transparency
+    if (!isbn || isbn.trim() === '') return '-';
     return isbn;
   };
 

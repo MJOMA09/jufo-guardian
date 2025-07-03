@@ -183,11 +183,16 @@ export const checkJufoQuality = async (source: string, issnPrint?: string, issnO
 };
 
 /**
- * Determine indexing status based on JUFO level
- * Levels 1, 2, 3 are indexed. Level 0 is NOT indexed.
+ * CORRECTED: Determine indexing status based on JUFO level
+ * JUFO Levels 1, 2, 3 = INDEXED
+ * JUFO Level 0 = NOT INDEXED
+ * Not found = NOT INDEXED
  */
 const determineIndexingStatus = (level: number | string | null | undefined): { isIndexed: boolean, status: 'Indexed' | 'Not Indexed' } => {
+  console.log(`🔍 DETERMINING INDEX STATUS FOR LEVEL: ${level}`);
+  
   if (level === null || level === undefined || level === "Not found") {
+    console.log(`❌ Level is null/undefined/not found -> NOT INDEXED`);
     return { isIndexed: false, status: 'Not Indexed' };
   }
   
@@ -195,11 +200,14 @@ const determineIndexingStatus = (level: number | string | null | undefined): { i
   
   if (!isNaN(levelNum)) {
     if (levelNum >= 1 && levelNum <= 3) {
+      console.log(`✅ Level ${levelNum} (1-3) -> INDEXED`);
       return { isIndexed: true, status: 'Indexed' };
     } else if (levelNum === 0) {
+      console.log(`❌ Level 0 -> NOT INDEXED`);
       return { isIndexed: false, status: 'Not Indexed' };
     }
   }
   
+  console.log(`❌ Invalid/unknown level ${level} -> NOT INDEXED`);
   return { isIndexed: false, status: 'Not Indexed' };
 };

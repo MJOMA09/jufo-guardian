@@ -92,6 +92,9 @@ const Index = () => {
           console.log(`--- Checking publication ${checkedCount + 1}/${totalToCheck} ---`);
           console.log(`Title: ${updatedPublications[i].title}`);
           console.log(`Source: ${updatedPublications[i].source}`);
+          console.log(`ISSN Print: ${updatedPublications[i].issnPrint || 'N/A'}`);
+          console.log(`ISSN Online: ${updatedPublications[i].issnOnline || 'N/A'}`);
+          console.log(`ISBN: ${updatedPublications[i].isbn || 'N/A'}`);
           
           // Check JUFO quality with all available identifiers
           const result = await checkJufoQuality(
@@ -103,7 +106,7 @@ const Index = () => {
           
           console.log(`Result: Level ${result.level}, Indexed: ${result.indexed}, Status: ${result.status}`);
           
-          // Update publication with result
+          // Update publication with result - ensure ISSN/ISBN are preserved
           updatedPublications[i] = {
             ...updatedPublications[i],
             jufoLevel: result.level,
@@ -112,6 +115,10 @@ const Index = () => {
             evaluated: result.evaluated,
             checked: true,
             status: result.status,
+            // Ensure ISSN/ISBN fields are preserved in the result
+            issnPrint: updatedPublications[i].issnPrint,
+            issnOnline: updatedPublications[i].issnOnline,
+            isbn: updatedPublications[i].isbn,
           };
           
           checkedCount++;
@@ -141,6 +148,10 @@ const Index = () => {
             evaluated: false,
             checked: true,
             status: 'Not Indexed',
+            // Preserve ISSN/ISBN even on failure
+            issnPrint: updatedPublications[i].issnPrint,
+            issnOnline: updatedPublications[i].issnOnline,
+            isbn: updatedPublications[i].isbn,
           };
           
           checkedCount++;
