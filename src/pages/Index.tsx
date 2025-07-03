@@ -68,8 +68,8 @@ const Index = () => {
     setCheckingProgress(0);
     setCurrentlyChecking("");
     
-    // Create a copy of publications
-    const updatedPublications = [...publications];
+    // Create a copy of publications to ensure immutability
+    const updatedPublications = publications.map(pub => ({ ...pub }));
     let checkedCount = 0;
     let indexedCount = 0;
     let evaluatedCount = 0;
@@ -92,21 +92,29 @@ const Index = () => {
           console.log(`--- Checking publication ${checkedCount + 1}/${totalToCheck} ---`);
           console.log(`Title: ${updatedPublications[i].title}`);
           console.log(`Source: ${updatedPublications[i].source}`);
-          console.log(`ISSN Print: ${updatedPublications[i].issnPrint || 'N/A'}`);
-          console.log(`ISSN Online: ${updatedPublications[i].issnOnline || 'N/A'}`);
-          console.log(`ISBN: ${updatedPublications[i].isbn || 'N/A'}`);
+          console.log(`ISSN Print: "${updatedPublications[i].issnPrint || 'N/A'}"`);
+          console.log(`ISSN Online: "${updatedPublications[i].issnOnline || 'N/A'}"`);
+          console.log(`ISBN: "${updatedPublications[i].isbn || 'N/A'}"`);
+          console.log(`ISSN General: "${updatedPublications[i].issn || 'N/A'}"`);
+          
+          // Preserve original identifiers before checking
+          const originalIssnPrint = updatedPublications[i].issnPrint;
+          const originalIssnOnline = updatedPublications[i].issnOnline;
+          const originalIsbn = updatedPublications[i].isbn;
+          const originalIssn = updatedPublications[i].issn;
           
           // Check JUFO quality with all available identifiers
           const result = await checkJufoQuality(
             updatedPublications[i].source,
-            updatedPublications[i].issnPrint,
-            updatedPublications[i].issnOnline,
-            updatedPublications[i].isbn
+            originalIssnPrint,
+            originalIssnOnline,
+            originalIsbn
           );
           
           console.log(`Result: Level ${result.level}, Indexed: ${result.indexed}, Status: ${result.status}`);
+          console.log(`Preserving identifiers - Print: "${originalIssnPrint}", Online: "${originalIssnOnline}", ISBN: "${originalIsbn}", General: "${originalIssn}"`);
           
-          // Update publication with result - ensure ISSN/ISBN are preserved
+          // Update publication with result - ENSURE ALL IDENTIFIERS ARE PRESERVED
           updatedPublications[i] = {
             ...updatedPublications[i],
             jufoLevel: result.level,
@@ -115,10 +123,11 @@ const Index = () => {
             evaluated: result.evaluated,
             checked: true,
             status: result.status,
-            // Ensure ISSN/ISBN fields are preserved in the result
-            issnPrint: updatedPublications[i].issnPrint,
-            issnOnline: updatedPublications[i].issnOnline,
-            isbn: updatedPublications[i].isbn,
+            // CRITICAL: Preserve ALL identifier fields exactly as they were
+            issnPrint: originalIssnPrint,
+            issnOnline: originalIssnOnline,
+            isbn: originalIsbn,
+            issn: originalIssn,
           };
           
           checkedCount++;
@@ -139,6 +148,12 @@ const Index = () => {
           console.error("Error checking publication:", error);
           console.error(`Failed publication: ${updatedPublications[i].title}`);
           
+          // Preserve identifiers even on failure
+          const originalIssnPrint = updatedPublications[i].issnPrint;
+          const originalIssnOnline = updatedPublications[i].issnOnline;
+          const originalIsbn = updatedPublications[i].isbn;
+          const originalIssn = updatedPublications[i].issn;
+          
           // Mark as checked even if failed to avoid infinite loops
           updatedPublications[i] = {
             ...updatedPublications[i],
@@ -148,10 +163,11 @@ const Index = () => {
             evaluated: false,
             checked: true,
             status: 'Not Indexed',
-            // Preserve ISSN/ISBN even on failure
-            issnPrint: updatedPublications[i].issnPrint,
-            issnOnline: updatedPublications[i].issnOnline,
-            isbn: updatedPublications[i].isbn,
+            // CRITICAL: Preserve identifiers even on failure
+            issnPrint: originalIssnPrint,
+            issnOnline: originalIssnOnline,
+            isbn: originalIsbn,
+            issn: originalIssn,
           };
           
           checkedCount++;

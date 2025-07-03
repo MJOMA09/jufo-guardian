@@ -100,23 +100,38 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
     );
   };
 
-  // CORRECTED: Enhanced ISSN/ISBN display functions - show all available identifiers for checked publications
+  // FIXED: Enhanced ISSN/ISBN display functions - always show all available identifiers
   const displayISSN = (issn: string | undefined, publication: Publication): string => {
-    // Always show ISSN if available, regardless of check status for better transparency
+    // Always show ISSN if available - transparency is key for verification
     if (!issn || issn.trim() === '') return '-';
     
-    // Ensure proper ISSN format (XXXX-XXXX)
+    // Clean and format ISSN properly
     const cleaned = issn.replace(/[^0-9X]/gi, '');
     if (cleaned.length === 8) {
       return `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
     }
-    return issn; // Return as-is if not standard format
+    
+    // Return original if not standard 8-digit format
+    return issn.trim();
   };
 
   const displayISBN = (isbn: string | undefined, publication: Publication): string => {
-    // Always show ISBN if available, regardless of check status for better transparency
+    // Always show ISBN if available - transparency is key for verification
     if (!isbn || isbn.trim() === '') return '-';
-    return isbn;
+    return isbn.trim();
+  };
+
+  // NEW: Display general ISSN if available
+  const displayGeneralISSN = (issn: string | undefined): string => {
+    if (!issn || issn.trim() === '') return '-';
+    
+    // Clean and format ISSN properly
+    const cleaned = issn.replace(/[^0-9X]/gi, '');
+    if (cleaned.length === 8) {
+      return `${cleaned.substring(0, 4)}-${cleaned.substring(4)}`;
+    }
+    
+    return issn.trim();
   };
 
   const filteredPublications = publications.filter((pub) => {
@@ -274,6 +289,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                       <TableHead>Source</TableHead>
                       <TableHead>ISSN Print</TableHead>
                       <TableHead>ISSN Online</TableHead>
+                      <TableHead>ISSN General</TableHead>
                       <TableHead>ISBN</TableHead>
                       <TableHead>JUFO Level</TableHead>
                       <TableHead>Norwegian Level</TableHead>
@@ -319,6 +335,9 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                         </TableCell>
                         <TableCell className="text-sm font-mono">
                           {displayISSN(pub.issnOnline, pub)}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">
+                          {displayGeneralISSN(pub.issn)}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
                           {displayISBN(pub.isbn, pub)}
@@ -470,7 +489,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Print</h3>
                   <p className="font-mono text-sm">{displayISSN(selectedPublication.issnPrint, selectedPublication)}</p>
@@ -480,17 +499,17 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN Online</h3>
                   <p className="font-mono text-sm">{displayISSN(selectedPublication.issnOnline, selectedPublication)}</p>
                 </div>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
-                <p className="font-mono text-sm">{displayISBN(selectedPublication.isbn, selectedPublication)}</p>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">ISBN</h3>
+                  <p className="font-mono text-sm">{displayISBN(selectedPublication.isbn, selectedPublication)}</p>
+                </div>
               </div>
               
               {selectedPublication.issn && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">ISSN (General)</h3>
-                  <p className="font-mono text-sm">{selectedPublication.issn}</p>
+                  <p className="font-mono text-sm">{displayGeneralISSN(selectedPublication.issn)}</p>
                 </div>
               )}
               
