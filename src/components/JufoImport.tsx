@@ -1,8 +1,8 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
-import { getDatabaseStats, getDatabaseMetadata, reloadFromStorage } from "@/utils/jufo-data";
+import { getDatabaseStats, getDatabaseMetadata, reloadFromStorage, subscribeToChanges } from "@/utils/jufo-data";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -24,12 +24,27 @@ const JufoImport: React.FC = () => {
   
   const hasData = stats.totalEntries > 0;
 
-  // Auto-load database on mount
-  useEffect(() => {
+  // Refresh stats from storage
+  const refreshData = useCallback(() => {
     reloadFromStorage();
     setStats(getDatabaseStats());
     setMetadata(getDatabaseMetadata());
   }, []);
+
+  // Auto-load database on mount and subscribe to cross-tab changes
+  useEffect(() => {
+    // Initial load
+    refreshData();
+    
+    // Subscribe to changes from other tabs (admin uploads)
+    const unsubscribe = subscribeToChanges(() => {
+      console.log('📡 Database updated, refreshing client view...');
+      refreshData();
+    });
+    
+    // Cleanup subscription on unmount
+    return unsubscribe;
+  }, [refreshData]);
 
   // Refresh database from storage (in case admin updated it)
   const handleRefresh = () => {
