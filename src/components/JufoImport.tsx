@@ -1,16 +1,60 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Database, ArrowRight } from "lucide-react";
-import { getDatabaseStats } from "@/utils/jufo-data";
+import { Database, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { getDatabaseStats, getDatabaseMetadata, reloadFromStorage } from "@/utils/jufo-data";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+
+interface DatabaseStats {
+  totalEntries: number;
+  currentYearEntries: number;
+  latestYear: number;
+  level0: number;
+  level1: number;
+  level2: number;
+  level3: number;
+  notEvaluated: number;
+}
 
 const JufoImport: React.FC = () => {
-  const navigate = useNavigate();
-  const stats = getDatabaseStats();
+  const [stats, setStats] = useState<DatabaseStats>(getDatabaseStats());
+  const [metadata, setMetadata] = useState(getDatabaseMetadata());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const hasData = stats.totalEntries > 0;
+
+  // Auto-load database on mount
+  useEffect(() => {
+    reloadFromStorage();
+    setStats(getDatabaseStats());
+    setMetadata(getDatabaseMetadata());
+  }, []);
+
+  // Refresh database from storage (in case admin updated it)
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      reloadFromStorage();
+      setStats(getDatabaseStats());
+      setMetadata(getDatabaseMetadata());
+      setIsRefreshing(false);
+    }, 500);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Unknown';
+    }
+  };
 
   return (
     <Card>
@@ -26,32 +70,51 @@ const JufoImport: React.FC = () => {
       <CardContent>
         {hasData ? (
           <div className="space-y-4">
-            <div>
-              <p className="font-medium">Database Status: <span className="text-green-600">Active</span></p>
-              <p className="text-sm text-muted-foreground">
-                {stats.totalEntries} publications indexed ({stats.currentYearEntries} for {stats.latestYear})
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Database Status: <span className="text-green-600">Active</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {stats.totalEntries.toLocaleString()} publications indexed ({stats.currentYearEntries.toLocaleString()} for {stats.latestYear})
+                </p>
+                {metadata?.updatedAt && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Last updated: {formatDate(metadata.updatedAt)}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title="Refresh database"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
             
             <div className="grid grid-cols-5 gap-2">
               <div className="rounded-md border p-2">
-                <div className="text-xl font-bold">{stats.level3}</div>
+                <div className="text-xl font-bold">{stats.level3.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground">Level 3</div>
               </div>
               <div className="rounded-md border p-2">
-                <div className="text-xl font-bold">{stats.level2}</div>
+                <div className="text-xl font-bold">{stats.level2.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground">Level 2</div>
               </div>
               <div className="rounded-md border p-2">
-                <div className="text-xl font-bold">{stats.level1}</div>
+                <div className="text-xl font-bold">{stats.level1.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground">Level 1</div>
               </div>
               <div className="rounded-md border p-2">
-                <div className="text-xl font-bold">{stats.level0}</div>
+                <div className="text-xl font-bold">{stats.level0.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground">Level 0</div>
               </div>
               <div className="rounded-md border p-2">
-                <div className="text-xl font-bold">{stats.notEvaluated}</div>
+                <div className="text-xl font-bold">{stats.notEvaluated.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground">Not Evaluated</div>
               </div>
             </div>
@@ -64,27 +127,25 @@ const JufoImport: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-6">
-            <Database className="h-10 w-10 text-muted-foreground mb-3 mx-auto" />
-            <p className="text-sm text-muted-foreground mb-2">
-              No JUFO database has been imported yet
+            <AlertCircle className="h-10 w-10 text-amber-500 mb-3 mx-auto" />
+            <p className="text-sm font-medium text-amber-600 mb-2">
+              Reference Database Not Available
             </p>
             <p className="text-xs text-muted-foreground">
-              Contact an administrator to import JUFO data
+              The JUFO reference database has not been configured yet. Please contact an administrator to set up the database.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="mt-4"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Check for Updates
+            </Button>
           </div>
         )}
-
-        <div className="mt-4 text-right">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate('/login')}
-            className="text-xs"
-          >
-            Admin Access
-            <ArrowRight className="ml-2 h-3 w-3" />
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

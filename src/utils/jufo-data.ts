@@ -2,10 +2,83 @@
 import * as XLSX from 'xlsx';
 import { JufoData } from "@/types";
 
+// LocalStorage key for persistent JUFO database
+const JUFO_DATABASE_KEY = 'scifilter-jufo-database';
+const JUFO_METADATA_KEY = 'scifilter-jufo-metadata';
+
 // Store for imported JUFO data
 let jufoDatabase: JufoData[] = [];
 // Track the latest year available in the database
 let latestDatabaseYear: number = new Date().getFullYear();
+// Track database version for sync
+let databaseVersion: number = 0;
+
+/**
+ * Initialize database from localStorage on module load
+ */
+const initializeFromStorage = (): void => {
+  try {
+    const storedData = localStorage.getItem(JUFO_DATABASE_KEY);
+    const storedMetadata = localStorage.getItem(JUFO_METADATA_KEY);
+    
+    if (storedData && storedMetadata) {
+      const metadata = JSON.parse(storedMetadata);
+      jufoDatabase = JSON.parse(storedData);
+      latestDatabaseYear = metadata.latestYear || new Date().getFullYear();
+      databaseVersion = metadata.version || 0;
+      console.log(`✅ JUFO database loaded from storage: ${jufoDatabase.length} entries, version ${databaseVersion}`);
+    }
+  } catch (error) {
+    console.error('Failed to load JUFO database from storage:', error);
+  }
+};
+
+/**
+ * Save database to localStorage for persistence
+ */
+const saveToStorage = (): void => {
+  try {
+    databaseVersion = Date.now();
+    const metadata = {
+      latestYear: latestDatabaseYear,
+      version: databaseVersion,
+      updatedAt: new Date().toISOString(),
+      entryCount: jufoDatabase.length
+    };
+    
+    localStorage.setItem(JUFO_DATABASE_KEY, JSON.stringify(jufoDatabase));
+    localStorage.setItem(JUFO_METADATA_KEY, JSON.stringify(metadata));
+    console.log(`✅ JUFO database saved to storage: ${jufoDatabase.length} entries, version ${databaseVersion}`);
+  } catch (error) {
+    console.error('Failed to save JUFO database to storage:', error);
+  }
+};
+
+/**
+ * Get database metadata for display
+ */
+export const getDatabaseMetadata = () => {
+  try {
+    const storedMetadata = localStorage.getItem(JUFO_METADATA_KEY);
+    if (storedMetadata) {
+      return JSON.parse(storedMetadata);
+    }
+  } catch (error) {
+    console.error('Failed to get database metadata:', error);
+  }
+  return null;
+};
+
+/**
+ * Force reload database from localStorage (for client-side sync)
+ */
+export const reloadFromStorage = (): boolean => {
+  initializeFromStorage();
+  return jufoDatabase.length > 0;
+};
+
+// Initialize on module load
+initializeFromStorage();
 
 /**
  * Process and import JUFO data from an Excel file
@@ -67,6 +140,9 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
         
         jufoDatabase = validData;
         latestDatabaseYear = maxYear;
+        
+        // Save to localStorage for persistence
+        saveToStorage();
         
         console.log(`✅ Processing complete: ${validData.length} valid entries, latest year: ${maxYear}`);
         
