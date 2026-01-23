@@ -77,6 +77,32 @@ export const reloadFromStorage = (): boolean => {
   return jufoDatabase.length > 0;
 };
 
+/**
+ * Get current database version for sync detection
+ */
+export const getDatabaseVersion = (): number => {
+  return databaseVersion;
+};
+
+/**
+ * Subscribe to database changes (for cross-tab sync)
+ */
+export const subscribeToChanges = (callback: () => void): (() => void) => {
+  const handleStorageChange = (event: StorageEvent) => {
+    if (event.key === JUFO_METADATA_KEY || event.key === JUFO_DATABASE_KEY) {
+      console.log('🔄 Database changed in another tab, reloading...');
+      initializeFromStorage();
+      callback();
+    }
+  };
+  
+  window.addEventListener('storage', handleStorageChange);
+  
+  return () => {
+    window.removeEventListener('storage', handleStorageChange);
+  };
+};
+
 // Initialize on module load
 initializeFromStorage();
 
