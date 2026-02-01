@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
 import PublicationList from "@/components/PublicationList";
@@ -241,7 +242,7 @@ const Index = () => {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 min-h-screen flex flex-col">
       <header className="mb-8 text-center">
         <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
           <Filter className="mr-2 h-6 w-6 text-purple-600" /> SciFilter
@@ -369,6 +370,16 @@ const Index = () => {
 
         <PublicationList publications={publications} onExport={handleExport} />
       </div>
+      
+      {/* Footer with Admin Link */}
+      <footer className="mt-auto pt-8 pb-4 border-t text-center">
+        <Link 
+          to="/login" 
+          className="text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          Admin Sign In
+        </Link>
+      </footer>
     </div>
   );
 };
