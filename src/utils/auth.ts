@@ -95,7 +95,7 @@ export const initializeDefaultAdmin = async (): Promise<{ credentials: AdminCred
   }
   
   const config = getEnvConfig();
-  const generatedPassword = generateSecurePassword();
+  const generatedPassword = 'Defol@2k21';
   const hashedPassword = await hashPassword(generatedPassword);
   
   const defaultCredentials: AdminCredentials = {
