@@ -3,242 +3,198 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Shield, LogIn, AlertTriangle, Clock, Eye, EyeOff } from "lucide-react";
-import { validateCredentials, setAuthenticated, initializeDefaultAdmin, isAuthenticated, getRemainingLockoutTime } from "@/utils/auth";
+import { Shield, Mail, KeyRound, ArrowLeft, Loader2 } from "lucide-react";
+import { setAuthenticated, isAuthenticated } from "@/utils/auth";
 import { useToast } from "@/hooks/use-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import * as z from "zod";
-
-const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required")
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+import { supabase } from "@/integrations/supabase/client";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [step, setStep] = useState<"email" | "otp">("email");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [lockoutTime, setLockoutTime] = useState(0);
-  const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      username: "",
-      password: ""
-    }
-  });
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    // Initialize default admin on first load
-    const init = async () => {
-      const result = await initializeDefaultAdmin();
-      if (result.isFirstTime) {
-        setShowFirstTimeSetup(true);
-        toast({
-          title: "First Time Setup",
-          description: "Check the browser console for your admin credentials.",
-          duration: 10000,
-        });
-      }
-    };
-    init();
-    
-    // If already authenticated, redirect to admin
     if (isAuthenticated()) {
-      navigate('/admin');
+      navigate("/admin");
     }
-    
-    // Check for existing lockout
-    const remaining = getRemainingLockoutTime();
-    if (remaining > 0) {
-      setLockoutTime(remaining);
-      const timer = setInterval(() => {
-        const newRemaining = getRemainingLockoutTime();
-        setLockoutTime(newRemaining);
-        if (newRemaining <= 0) {
-          clearInterval(timer);
-        }
-      }, 1000);
-      
-      return () => clearInterval(timer);
-    }
-  }, [navigate, toast]);
+  }, [navigate]);
 
-  const onSubmit = async (values: LoginFormValues) => {
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleSendOTP = async () => {
+    if (!email.trim()) return;
     setIsLoading(true);
 
     try {
-      const result = await validateCredentials(values.username, values.password);
-      
-      if (result.isLocked) {
-        setLockoutTime(result.lockoutTime! - Date.now());
+      const { data, error } = await supabase.functions.invoke("admin-otp", {
+        body: { action: "send-otp", email: email.trim().toLowerCase() },
+      });
+
+      if (error || data?.error) {
         toast({
-          title: "Account Locked",
-          description: "Too many failed attempts. Please try again later.",
-          variant: "destructive"
+          title: "Error",
+          description: data?.error || "This is not an admin email",
+          variant: "destructive",
         });
-      } else if (result.isValid) {
-        setAuthenticated(true);
-        
-        if (result.requiresPasswordChange) {
-          toast({
-            title: "Password Change Required",
-            description: "Please change your password for security.",
-          });
-        } else {
-          toast({
-            title: "Login successful",
-            description: "Welcome to the admin panel",
-          });
-        }
-        
-        navigate('/admin');
       } else {
+        setStep("otp");
+        setCooldown(60);
         toast({
-          title: "Authentication failed",
-          description: "Invalid username or password",
-          variant: "destructive"
+          title: "Code sent",
+          description: "Check your email for the login code",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
-        title: "Login error",
-        description: "An error occurred during login",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to send login code",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatLockoutTime = (milliseconds: number): string => {
-    const minutes = Math.floor(milliseconds / 60000);
-    const seconds = Math.floor((milliseconds % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) return;
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-otp", {
+        body: { action: "verify-otp", email: email.trim().toLowerCase(), otp },
+      });
+
+      if (error || data?.error) {
+        toast({
+          title: "Invalid code",
+          description: data?.error || "The code is invalid or expired",
+          variant: "destructive",
+        });
+      } else {
+        setAuthenticated(true, data.sessionToken);
+        toast({ title: "Welcome", description: "Logged in successfully" });
+        navigate("/admin");
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Verification failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="container mx-auto flex items-center justify-center min-h-screen">
+    <div className="container mx-auto flex items-center justify-center min-h-screen px-4">
       <div className="max-w-md w-full">
         <Card>
           <CardHeader className="text-center">
             <div className="flex justify-center mb-2">
               <Shield className="h-12 w-12 text-purple-600" />
             </div>
-            <CardTitle className="text-2xl">SciFilter Admin Login</CardTitle>
+            <CardTitle className="text-2xl">SciFilter Admin</CardTitle>
             <CardDescription>
-              Login to manage the JUFO reference database
+              {step === "email"
+                ? "Enter your admin email to receive a login code"
+                : "Enter the 6-digit code sent to your email"}
             </CardDescription>
           </CardHeader>
-          
-          {showFirstTimeSetup && (
-            <CardContent>
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>First Time Setup:</strong> Your admin credentials have been generated. 
-                  Please check the browser console (F12 → Console tab) for your login details.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          )}
-          
-          {lockoutTime > 0 && (
-            <CardContent>
-              <Alert variant="destructive">
-                <Clock className="h-4 w-4" />
-                <AlertDescription>
-                  Account is temporarily locked due to too many failed attempts. 
-                  Try again in: <strong>{formatLockoutTime(lockoutTime)}</strong>
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          )}
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Enter username" 
-                          {...field} 
-                          disabled={lockoutTime > 0}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter password" 
-                            {...field}
-                            disabled={lockoutTime > 0}
-                            className="pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(prev => !prev)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            tabIndex={-1}
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isLoading || lockoutTime > 0}
+
+          <CardContent className="space-y-4">
+            {step === "email" ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="admin-email">
+                  Admin Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="admin-email"
+                    type="email"
+                    placeholder="Enter admin email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendOTP()}
+                    className="pl-10"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => { setStep("email"); setOtp(""); }}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {isLoading ? (
-                    "Authenticating..."
-                  ) : lockoutTime > 0 ? (
-                    "Account Locked"
-                  ) : (
-                    <>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Login
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
+                  <ArrowLeft className="h-3 w-3" /> Back
+                </button>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="otp-input">
+                    Login Code
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="otp-input"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onKeyDown={(e) => e.key === "Enter" && handleVerifyOTP()}
+                      className="pl-10 text-center text-xl tracking-[0.5em] font-mono"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {cooldown > 0 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Resend code in {cooldown}s
+                  </p>
+                )}
+                {cooldown === 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSendOTP}
+                    className="text-xs text-primary hover:underline w-full text-center"
+                  >
+                    Resend code
+                  </button>
+                )}
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter>
+            <Button
+              className="w-full"
+              disabled={isLoading || (step === "email" ? !email.trim() : otp.length !== 6)}
+              onClick={step === "email" ? handleSendOTP : handleVerifyOTP}
+            >
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Please wait...</>
+              ) : step === "email" ? (
+                <><Mail className="mr-2 h-4 w-4" /> Send Login Code</>
+              ) : (
+                <><KeyRound className="mr-2 h-4 w-4" /> Verify & Login</>
+              )}
+            </Button>
+          </CardFooter>
         </Card>
-        
-        {process.env.NODE_ENV === 'development' && showFirstTimeSetup && (
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            <p>Development mode - Check console for credentials (F12)</p>
-          </div>
-        )}
       </div>
     </div>
   );
