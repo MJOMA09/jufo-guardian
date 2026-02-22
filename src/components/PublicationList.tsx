@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, MoreHorizontal } from "lucide-react";
+import { Download, MoreHorizontal, SlidersHorizontal } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   Dialog, 
   DialogContent, 
@@ -30,6 +32,7 @@ interface PublicationListProps {
 }
 
 const PublicationList: React.FC<PublicationListProps> = ({ publications, onExport }) => {
+  const isMobile = useIsMobile();
   const [filterLevel, setFilterLevel] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("none");
   const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null);
@@ -182,75 +185,156 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, onExpor
   return (
     <>
       <Card className="w-full">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <CardTitle>Publications ({publications.length})</CardTitle>
-          <div className="flex space-x-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Show:</span>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={handleItemsPerPageChange}
-              >
-                <SelectTrigger className="w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
+          
+          {isMobile ? (
+            <div className="flex items-center gap-2 w-full">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                    Filters & Sort
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 space-y-4" align="end">
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Show per page</span>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={handleItemsPerPageChange}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Filter</span>
+                    <Select
+                      value={filterLevel}
+                      onValueChange={setFilterLevel}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filter by level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Publications</SelectItem>
+                        <SelectItem value="indexed123">JUFO Levels 1-3</SelectItem>
+                        <SelectItem value="3">JUFO Level 3</SelectItem>
+                        <SelectItem value="2">JUFO Level 2</SelectItem>
+                        <SelectItem value="1">JUFO Level 1</SelectItem>
+                        <SelectItem value="0">JUFO Level 0</SelectItem>
+                        <SelectItem value="absent">Absent</SelectItem>
+                        <SelectItem value="notEvaluated">Not Evaluated</SelectItem>
+                        <SelectItem value="notIndexed">Not Indexed</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Sort</span>
+                    <Select
+                      value={sortBy}
+                      onValueChange={setSortBy}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Default</SelectItem>
+                        <SelectItem value="yearDesc">Year (Newest)</SelectItem>
+                        <SelectItem value="yearAsc">Year (Oldest)</SelectItem>
+                        <SelectItem value="jufoLevel">JUFO Level</SelectItem>
+                        <SelectItem value="source">Source Name</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Button variant="outline" size="sm" className="flex-1" onClick={handleExportFiltered}>
+                <Download className="mr-2 h-4 w-4" />
+                Export ({filterLevel !== "all" ? filteredPublications.length : publications.length})
+              </Button>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Filter:</span>
-              <Select
-                value={filterLevel}
-                onValueChange={setFilterLevel}
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Filter by level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Publications</SelectItem>
-                  <SelectItem value="indexed123">JUFO Levels 1-3</SelectItem>
-                  <SelectItem value="3">JUFO Level 3</SelectItem>
-                  <SelectItem value="2">JUFO Level 2</SelectItem>
-                  <SelectItem value="1">JUFO Level 1</SelectItem>
-                  <SelectItem value="0">JUFO Level 0</SelectItem>
-                  <SelectItem value="absent">Absent</SelectItem>
-                  <SelectItem value="notEvaluated">Not Evaluated</SelectItem>
-                  <SelectItem value="notIndexed">Not Indexed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
+          ) : (
+            <div className="flex space-x-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Show:</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={handleItemsPerPageChange}
+                >
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter:</span>
+                <Select
+                  value={filterLevel}
+                  onValueChange={setFilterLevel}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Filter by level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Publications</SelectItem>
+                    <SelectItem value="indexed123">JUFO Levels 1-3</SelectItem>
+                    <SelectItem value="3">JUFO Level 3</SelectItem>
+                    <SelectItem value="2">JUFO Level 2</SelectItem>
+                    <SelectItem value="1">JUFO Level 1</SelectItem>
+                    <SelectItem value="0">JUFO Level 0</SelectItem>
+                    <SelectItem value="absent">Absent</SelectItem>
+                    <SelectItem value="notEvaluated">Not Evaluated</SelectItem>
+                    <SelectItem value="notIndexed">Not Indexed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Sort:</span>
+                <Select
+                  value={sortBy}
+                  onValueChange={setSortBy}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Default</SelectItem>
+                    <SelectItem value="yearDesc">Year (Newest)</SelectItem>
+                    <SelectItem value="yearAsc">Year (Oldest)</SelectItem>
+                    <SelectItem value="jufoLevel">JUFO Level</SelectItem>
+                    <SelectItem value="source">Source Name</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button variant="outline" onClick={handleExportFiltered}>
+                <Download className="mr-2 h-4 w-4" />
+                Export {filterLevel !== "all" ? `${getFilterDisplayName(filterLevel)} (${filteredPublications.length})` : `(${publications.length})`}
+              </Button>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Sort:</span>
-              <Select
-                value={sortBy}
-                onValueChange={setSortBy}
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Default</SelectItem>
-                  <SelectItem value="yearDesc">Year (Newest)</SelectItem>
-                  <SelectItem value="yearAsc">Year (Oldest)</SelectItem>
-                  <SelectItem value="jufoLevel">JUFO Level</SelectItem>
-                  <SelectItem value="source">Source Name</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button variant="outline" onClick={handleExportFiltered}>
-              <Download className="mr-2 h-4 w-4" />
-              Export {filterLevel !== "all" ? `${getFilterDisplayName(filterLevel)} (${filteredPublications.length})` : `(${publications.length})`}
-            </Button>
-          </div>
+          )}
         </CardHeader>
         <CardContent>
           {publications.length > 0 ? (
