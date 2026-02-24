@@ -1,122 +1,126 @@
 
 import * as XLSX from 'xlsx';
 import { JufoData } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
-// LocalStorage key for persistent JUFO database
-const JUFO_DATABASE_KEY = 'scifilter-jufo-database';
-const JUFO_METADATA_KEY = 'scifilter-jufo-metadata';
-
-// Store for imported JUFO data
+// In-memory cache
 let jufoDatabase: JufoData[] = [];
-// Track the latest year available in the database
 let latestDatabaseYear: number = new Date().getFullYear();
-// Track database version for sync
 let databaseVersion: number = 0;
+let isLoaded = false;
 
 /**
- * Initialize database from localStorage on module load
+ * Load JUFO data from Supabase cloud
  */
-const initializeFromStorage = (): void => {
+export const loadFromCloud = async (): Promise<boolean> => {
   try {
-    const storedData = localStorage.getItem(JUFO_DATABASE_KEY);
-    const storedMetadata = localStorage.getItem(JUFO_METADATA_KEY);
+    // Get metadata first
+    const { data: metaData } = await supabase.from("jufo_metadata").select("*").limit(1).maybeSingle();
     
-    if (storedData && storedMetadata) {
-      const metadata = JSON.parse(storedMetadata);
-      jufoDatabase = JSON.parse(storedData);
-      latestDatabaseYear = metadata.latestYear || new Date().getFullYear();
-      databaseVersion = metadata.version || 0;
-      console.log(`✅ JUFO database loaded from storage: ${jufoDatabase.length} entries, version ${databaseVersion}`);
+    if (!metaData || metaData.entry_count === 0) {
+      jufoDatabase = [];
+      isLoaded = true;
+      return false;
     }
-  } catch (error) {
-    console.error('Failed to load JUFO database from storage:', error);
-  }
-};
 
-/**
- * Save database to localStorage for persistence
- */
-const saveToStorage = (): void => {
-  try {
-    databaseVersion = Date.now();
-    const metadata = {
-      latestYear: latestDatabaseYear,
-      version: databaseVersion,
-      updatedAt: new Date().toISOString(),
-      entryCount: jufoDatabase.length
-    };
+    // Load all entries (may need pagination for large datasets)
+    let allEntries: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
     
-    localStorage.setItem(JUFO_DATABASE_KEY, JSON.stringify(jufoDatabase));
-    localStorage.setItem(JUFO_METADATA_KEY, JSON.stringify(metadata));
-    console.log(`✅ JUFO database saved to storage: ${jufoDatabase.length} entries, version ${databaseVersion}`);
+    while (true) {
+      const { data, error } = await supabase
+        .from("jufo_entries")
+        .select("*")
+        .range(from, from + pageSize - 1);
+      
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      
+      allEntries = allEntries.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    jufoDatabase = allEntries.map(entry => ({
+      name: entry.name,
+      issn: entry.issn || '',
+      level: entry.level,
+      norwegianLevel: entry.norwegian_level,
+      publisher: entry.publisher || '',
+      type: entry.type || 'journal',
+      year: entry.year,
+      evaluated: entry.evaluated ?? false,
+    }));
+
+    latestDatabaseYear = metaData.latest_year || new Date().getFullYear();
+    databaseVersion = metaData.version || 0;
+    isLoaded = true;
+
+    console.log(`✅ JUFO database loaded from cloud: ${jufoDatabase.length} entries, version ${databaseVersion}`);
+    return jufoDatabase.length > 0;
   } catch (error) {
-    console.error('Failed to save JUFO database to storage:', error);
+    console.error('Failed to load JUFO database from cloud:', error);
+    isLoaded = true;
+    return false;
   }
 };
 
 /**
- * Get database metadata for display
+ * Subscribe to real-time changes on JUFO data
+ */
+export const subscribeToChanges = (callback: () => void): (() => void) => {
+  const channel = supabase
+    .channel('jufo-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'jufo_metadata' }, () => {
+      console.log('📡 JUFO metadata changed, reloading...');
+      loadFromCloud().then(() => callback());
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+/**
+ * Get database metadata from cloud
  */
 export const getDatabaseMetadata = () => {
-  try {
-    const storedMetadata = localStorage.getItem(JUFO_METADATA_KEY);
-    if (storedMetadata) {
-      return JSON.parse(storedMetadata);
-    }
-  } catch (error) {
-    console.error('Failed to get database metadata:', error);
-  }
-  return null;
+  if (!isLoaded) return null;
+  if (jufoDatabase.length === 0) return null;
+  return {
+    latestYear: latestDatabaseYear,
+    version: databaseVersion,
+    entryCount: jufoDatabase.length,
+  };
 };
 
 /**
- * Force reload database from localStorage (for client-side sync)
+ * Reload from cloud
  */
 export const reloadFromStorage = (): boolean => {
-  initializeFromStorage();
+  // Trigger async reload, return current state
+  loadFromCloud();
   return jufoDatabase.length > 0;
 };
 
-/**
- * Get current database version for sync detection
- */
-export const getDatabaseVersion = (): number => {
-  return databaseVersion;
-};
+export const getDatabaseVersion = (): number => databaseVersion;
 
 /**
- * Subscribe to database changes (for cross-tab sync)
+ * Process and import JUFO data from an Excel file - now uploads to cloud
  */
-export const subscribeToChanges = (callback: () => void): (() => void) => {
-  const handleStorageChange = (event: StorageEvent) => {
-    if (event.key === JUFO_METADATA_KEY || event.key === JUFO_DATABASE_KEY) {
-      console.log('🔄 Database changed in another tab, reloading...');
-      initializeFromStorage();
-      callback();
-    }
-  };
-  
-  window.addEventListener('storage', handleStorageChange);
-  
-  return () => {
-    window.removeEventListener('storage', handleStorageChange);
-  };
-};
-
-// Initialize on module load
-initializeFromStorage();
-
-/**
- * Process and import JUFO data from an Excel file
- */
-export const importJufoExcel = (file: File): Promise<{ success: boolean, count: number }> => {
+export const importJufoExcel = async (
+  file: File,
+  onProgress?: (progress: number, message: string) => void
+): Promise<{ success: boolean; count: number }> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
+
+    reader.onload = async (e) => {
       try {
         let jsonData;
-        
+
         if (file.name.endsWith('.csv')) {
           const csvData = e.target?.result as string;
           const workbook = XLSX.read(csvData, { type: 'string' });
@@ -130,68 +134,116 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
           const worksheet = workbook.Sheets[firstSheetName];
           jsonData = XLSX.utils.sheet_to_json(worksheet);
         }
-        
-        console.log("✅ File loaded successfully");
-        console.log("Sample row:", jsonData[0]);
-        
+
+        onProgress?.(10, "File parsed, processing entries...");
+
         const currentYear = new Date().getFullYear();
         let maxYear = currentYear;
-        
-        const processedData: JufoData[] = jsonData.map((row: any) => {
+
+        const processedData = jsonData.map((row: any) => {
           const year = parseInt(row.Year || row.year || currentYear, 10);
           if (year > maxYear) maxYear = year;
-          
+
           return {
-            name: (row.Name || row.name || row.Title || row['Journal/Series'] || 
-                   row.Jufo_ID && row['__EMPTY'] || row['Journal_name'] || '').toString().trim(),
-            issn: (row.ISSN || row.issn || row.ISBN || row.isbn || row.ISSNL || 
-                   row.ISSN1 || row['Print ISSN'] || row['Online ISSN'] || '').toString().trim(),
+            name: (row.Name || row.name || row.Title || row['Journal/Series'] ||
+              row.Jufo_ID && row['__EMPTY'] || row['Journal_name'] || '').toString().trim(),
+            issn: (row.ISSN || row.issn || row.ISBN || row.isbn || row.ISSNL ||
+              row.ISSN1 || row['Print ISSN'] || row['Online ISSN'] || '').toString().trim(),
             level: parseInt(row.Level || row.level || row.JUFO || row.jufo || row['JUFO Level'] || 0, 10),
-            norwegianLevel: row.Norwegian || row.NorwegianLevel || row['Norwegian Level'] ||
-                          (row.indicators && typeof row.indicators === 'string' && 
-                           row.indicators.includes('level_norway') ? 
-                           parseInt(row.indicators.match(/"level_norway":(\d+)/)?.[1] || '0', 10) : null),
+            norwegian_level: row.Norwegian || row.NorwegianLevel || row['Norwegian Level'] ||
+              (row.indicators && typeof row.indicators === 'string' &&
+                row.indicators.includes('level_norway') ?
+                parseInt(row.indicators.match(/"level_norway":(\d+)/)?.[1] || '0', 10) : null),
             publisher: (row.Publisher || row.publisher || '').toString().trim(),
             type: (row.Type || row.type || row.Type_en || 'journal').toString().toLowerCase(),
             year: year,
-            evaluated: row.Level !== undefined && row.Level !== null || 
-                      row.level !== undefined && row.level !== null ||
-                      (row.isScientific === 'true' || row.isScientific === true)
+            evaluated: row.Level !== undefined && row.Level !== null ||
+              row.level !== undefined && row.level !== null ||
+              (row.isScientific === 'true' || row.isScientific === true),
           };
         });
-        
-        const validData = processedData.filter(item => 
+
+        const validData = processedData.filter((item: any) =>
           item.name && item.name.trim() !== '' && item.name.length > 2
         );
-        
-        jufoDatabase = validData;
-        latestDatabaseYear = maxYear;
-        
-        // Save to localStorage for persistence
-        saveToStorage();
-        
-        console.log(`✅ Processing complete: ${validData.length} valid entries, latest year: ${maxYear}`);
-        
-        resolve({ 
-          success: true, 
-          count: validData.length 
+
+        onProgress?.(20, `${validData.length} valid entries, uploading to cloud...`);
+
+        // Get admin token from session
+        const session = sessionStorage.getItem('scifilter-session');
+        const adminToken = session ? JSON.parse(session).timestamp?.toString() || 'admin' : 'admin';
+
+        const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const headers = {
+          "Content-Type": "application/json",
+          apikey: apiKey,
+          Authorization: `Bearer ${apiKey}`,
+          "x-admin-token": adminToken,
+        };
+
+        // Step 1: Clear existing data
+        onProgress?.(25, "Clearing old data...");
+        const clearRes = await fetch(`${baseUrl}/functions/v1/import-jufo`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ action: "clear" }),
         });
-      } catch (error) {
+        if (!clearRes.ok) throw new Error("Failed to clear existing data");
+
+        // Step 2: Upload in batches
+        const BATCH_SIZE = 500;
+        let uploaded = 0;
+
+        for (let i = 0; i < validData.length; i += BATCH_SIZE) {
+          const batch = validData.slice(i, i + BATCH_SIZE);
+          const progress = 30 + Math.round((uploaded / validData.length) * 60);
+          onProgress?.(progress, `Uploading batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(validData.length / BATCH_SIZE)}...`);
+
+          const batchRes = await fetch(`${baseUrl}/functions/v1/import-jufo`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ action: "batch", entries: batch }),
+          });
+          if (!batchRes.ok) {
+            const err = await batchRes.json();
+            throw new Error(err.error || "Failed to upload batch");
+          }
+          uploaded += batch.length;
+        }
+
+        // Step 3: Update metadata
+        onProgress?.(92, "Updating metadata...");
+        const metaRes = await fetch(`${baseUrl}/functions/v1/import-jufo`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            action: "metadata",
+            metadata: {
+              latestYear: maxYear,
+              entryCount: validData.length,
+            },
+          }),
+        });
+        if (!metaRes.ok) throw new Error("Failed to update metadata");
+
+        // Reload local cache from cloud
+        onProgress?.(95, "Syncing local cache...");
+        await loadFromCloud();
+
+        onProgress?.(100, "Import complete!");
+
+        resolve({ success: true, count: validData.length });
+      } catch (error: any) {
         console.error("❌ Error processing JUFO file:", error);
-        reject({ 
-          success: false, 
-          error: "Failed to process the file. Please ensure it's a valid JUFO export." 
-        });
+        reject({ success: false, error: error.message || "Failed to process the file." });
       }
     };
-    
+
     reader.onerror = () => {
-      reject({ 
-        success: false, 
-        error: "Error reading the file" 
-      });
+      reject({ success: false, error: "Error reading the file" });
     };
-    
+
     if (file.name.endsWith('.csv')) {
       reader.readAsText(file);
     } else {
@@ -200,12 +252,7 @@ export const importJufoExcel = (file: File): Promise<{ success: boolean, count: 
   });
 };
 
-/**
- * Get the latest year available in the database
- */
-export const getLatestDatabaseYear = (): number => {
-  return latestDatabaseYear;
-};
+export const getLatestDatabaseYear = (): number => latestDatabaseYear;
 
 /**
  * EXACT JUFO database search with 100% matching requirement
@@ -215,145 +262,69 @@ export const searchJufoDatabase = (source?: string, issnPrint?: string, issnOnli
     console.log("❌ No JUFO database data available");
     return null;
   }
-  
-  console.log(`=== JUFO DATABASE SEARCH (100% EXACT MATCHING) ===`);
-  console.log(`Database: ${jufoDatabase.length} entries`);
-  
-  const currentYearEntries = jufoDatabase.filter(entry => 
+
+  const currentYearEntries = jufoDatabase.filter(entry =>
     entry.year === latestDatabaseYear || !entry.year
   );
-  
-  console.log(`Priority: ${currentYearEntries.length} current year entries (${latestDatabaseYear})`);
-  
-  // PRIORITY 1: 100% EXACT source name matching
+
+  // PRIORITY 1: Exact source name matching
   if (source && source.trim() !== "" && !source.toLowerCase().includes("unknown")) {
-    console.log(`=== PRIORITY 1: 100% EXACT SOURCE NAME MATCHING ===`);
-    console.log(`Query: "${source}"`);
-    
-    const exactSourceMatch = searchByExactSourceName(currentYearEntries, source, "current year");
-    if (exactSourceMatch) {
-      console.log(`🎯 CURRENT YEAR EXACT SOURCE MATCH: Level ${exactSourceMatch.level}`);
-      return exactSourceMatch;
+    const normalizedQuery = source.toLowerCase().trim();
+
+    for (const entry of currentYearEntries) {
+      if (normalizedQuery === entry.name.toLowerCase().trim()) {
+        return entry;
+      }
     }
-    
-    const historicalExactSourceMatch = searchByExactSourceName(jufoDatabase, source, "historical");
-    if (historicalExactSourceMatch) {
-      console.log(`🎯 HISTORICAL EXACT SOURCE MATCH: Level ${historicalExactSourceMatch.level}`);
-      return historicalExactSourceMatch;
+    for (const entry of jufoDatabase) {
+      if (normalizedQuery === entry.name.toLowerCase().trim()) {
+        return entry;
+      }
     }
-    
-    console.log(`❌ NO 100% EXACT SOURCE MATCH for: "${source}"`);
   }
-  
-  // PRIORITY 2: ISSN/ISBN identifier matching (only if source name didn't match 100%)
+
+  // PRIORITY 2: ISSN/ISBN identifier matching
   if (issnPrint || issnOnline || isbn) {
-    console.log(`=== PRIORITY 2: ISSN/ISBN IDENTIFIER MATCHING ===`);
-    console.log("Source name didn't match 100%, checking identifiers...");
-    
-    const identifierMatch = searchByExactIdentifiers(currentYearEntries, issnPrint, issnOnline, isbn, "current year");
-    if (identifierMatch) {
-      console.log(`🎯 CURRENT YEAR IDENTIFIER MATCH: Level ${identifierMatch.level}`);
-      return identifierMatch;
-    }
-    
-    const historicalIdentifierMatch = searchByExactIdentifiers(jufoDatabase, issnPrint, issnOnline, isbn, "historical");
-    if (historicalIdentifierMatch) {
-      console.log(`🎯 HISTORICAL IDENTIFIER MATCH: Level ${historicalIdentifierMatch.level}`);
-      return historicalIdentifierMatch;
-    }
-    
-    console.log(`❌ NO IDENTIFIER MATCHES FOUND`);
-  }
-  
-  console.log(`❌ NO MATCHES FOUND`);
-  return null;
-};
+    const identifiers = [issnPrint, issnOnline, isbn].filter(Boolean);
 
-/**
- * Search by 100% exact source name matching only
- */
-const searchByExactSourceName = (dataset: JufoData[], source: string, datasetName: string): JufoData | null => {
-  console.log(`--- 100% Exact source search in ${datasetName} data (${dataset.length} entries) ---`);
-  
-  const normalizedQuery = source.toLowerCase().trim();
-  
-  for (const entry of dataset) {
-    const normalizedEntry = entry.name.toLowerCase().trim();
-    
-    // Only 100% exact matches are allowed
-    if (normalizedQuery === normalizedEntry) {
-      console.log(`✅ 100% EXACT MATCH - Query: "${source}", Entry: "${entry.name}", Level: ${entry.level}`);
-      return entry;
-    }
-  }
-  
-  console.log(`❌ NO 100% EXACT MATCHES in ${datasetName} data`);
-  return null;
-};
+    for (const identifier of identifiers) {
+      const normalizedQuery = normalizeIdentifier(identifier!);
 
-/**
- * Search by exact ISSN/ISBN identifiers
- */
-const searchByExactIdentifiers = (dataset: JufoData[], issnPrint?: string, issnOnline?: string, isbn?: string, datasetName?: string): JufoData | null => {
-  console.log(`--- Exact identifier search in ${datasetName} data (${dataset.length} entries) ---`);
-  
-  const identifiersToSearch = [
-    { type: 'ISSN Print', value: issnPrint },
-    { type: 'ISSN Online', value: issnOnline },
-    { type: 'ISBN', value: isbn }
-  ].filter(id => id.value);
-  
-  for (const identifier of identifiersToSearch) {
-    console.log(`Checking ${identifier.type}: "${identifier.value}"`);
-    
-    const normalizedQuery = normalizeIdentifier(identifier.value!);
-    
-    for (const entry of dataset) {
-      const normalizedEntry = normalizeIdentifier(entry.issn);
-      
-      // Check for exact match or exact match within multiple identifiers
-      if (normalizedQuery && normalizedEntry) {
-        if (normalizedQuery === normalizedEntry) {
-          console.log(`✅ EXACT ${identifier.type} MATCH - Query: ${identifier.value}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
-          return entry;
+      for (const entry of currentYearEntries) {
+        const normalizedEntry = normalizeIdentifier(entry.issn);
+        if (normalizedQuery && normalizedEntry) {
+          if (normalizedQuery === normalizedEntry) return entry;
+          const entryParts = entry.issn.split(/[,;|\s]+/).map(p => normalizeIdentifier(p.trim())).filter(Boolean);
+          if (entryParts.includes(normalizedQuery)) return entry;
         }
-        
-        // Handle multiple identifiers separated by delimiters
-        const entryParts = entry.issn.split(/[,;|\s]+/).map(part => normalizeIdentifier(part.trim())).filter(Boolean);
-        if (entryParts.includes(normalizedQuery)) {
-          console.log(`✅ EXACT ${identifier.type} MATCH (multi) - Query: ${identifier.value}, Entry: ${entry.issn}, Source: "${entry.name}", Level: ${entry.level}`);
-          return entry;
+      }
+
+      for (const entry of jufoDatabase) {
+        const normalizedEntry = normalizeIdentifier(entry.issn);
+        if (normalizedQuery && normalizedEntry) {
+          if (normalizedQuery === normalizedEntry) return entry;
+          const entryParts = entry.issn.split(/[,;|\s]+/).map(p => normalizeIdentifier(p.trim())).filter(Boolean);
+          if (entryParts.includes(normalizedQuery)) return entry;
         }
       }
     }
   }
-  
+
   return null;
 };
 
-/**
- * Normalize identifier (ISSN/ISBN) for exact matching
- */
 const normalizeIdentifier = (identifier: string): string => {
   if (!identifier) return '';
   return identifier.replace(/[^0-9X]/gi, '').toUpperCase();
 };
 
-/**
- * Check if database is populated
- */
-export const hasDatabaseData = (): boolean => {
-  return jufoDatabase.length > 0;
-};
+export const hasDatabaseData = (): boolean => jufoDatabase.length > 0;
 
-/**
- * Get database stats
- */
 export const getDatabaseStats = () => {
-  const latestYearEntries = jufoDatabase.filter(entry => 
+  const latestYearEntries = jufoDatabase.filter(entry =>
     entry.year === latestDatabaseYear || !entry.year
   );
-  
+
   return {
     totalEntries: jufoDatabase.length,
     currentYearEntries: latestYearEntries.length,

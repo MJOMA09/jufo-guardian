@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
-import { getDatabaseStats, getDatabaseMetadata, reloadFromStorage, subscribeToChanges } from "@/utils/jufo-data";
+import { getDatabaseStats, getDatabaseMetadata, loadFromCloud, subscribeToChanges } from "@/utils/jufo-data";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -21,54 +21,34 @@ const JufoImport: React.FC = () => {
   const [stats, setStats] = useState<DatabaseStats>(getDatabaseStats());
   const [metadata, setMetadata] = useState(getDatabaseMetadata());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   
   const hasData = stats.totalEntries > 0;
 
-  // Refresh stats from storage
-  const refreshData = useCallback(() => {
-    reloadFromStorage();
+  const refreshData = useCallback(async () => {
+    await loadFromCloud();
     setStats(getDatabaseStats());
     setMetadata(getDatabaseMetadata());
   }, []);
 
-  // Auto-load database on mount and subscribe to cross-tab changes
   useEffect(() => {
-    // Initial load
-    refreshData();
+    // Initial load from cloud
+    refreshData().then(() => setIsInitialLoading(false));
     
-    // Subscribe to changes from other tabs (admin uploads)
+    // Subscribe to real-time changes
     const unsubscribe = subscribeToChanges(() => {
-      console.log('📡 Database updated, refreshing client view...');
-      refreshData();
+      console.log('📡 Database updated via real-time, refreshing...');
+      setStats(getDatabaseStats());
+      setMetadata(getDatabaseMetadata());
     });
     
-    // Cleanup subscription on unmount
     return unsubscribe;
   }, [refreshData]);
 
-  // Refresh database from storage (in case admin updated it)
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      reloadFromStorage();
-      setStats(getDatabaseStats());
-      setMetadata(getDatabaseMetadata());
-      setIsRefreshing(false);
-    }, 500);
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return 'Unknown';
-    }
+    await refreshData();
+    setIsRefreshing(false);
   };
 
   return (
@@ -83,7 +63,12 @@ const JufoImport: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {hasData ? (
+        {isInitialLoading ? (
+          <div className="text-center py-6">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Loading database from cloud...</p>
+          </div>
+        ) : hasData ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -94,11 +79,6 @@ const JufoImport: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   {stats.totalEntries.toLocaleString()} publications indexed ({stats.currentYearEntries.toLocaleString()} for {stats.latestYear})
                 </p>
-                {metadata?.updatedAt && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Last updated: {formatDate(metadata.updatedAt)}
-                  </p>
-                )}
               </div>
               <Button
                 variant="ghost"
