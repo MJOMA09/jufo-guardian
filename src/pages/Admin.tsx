@@ -2,16 +2,25 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileSpreadsheet, Upload, Database, Shield } from "lucide-react";
-import { importJufoExcel, getDatabaseStats } from "@/utils/jufo-data";
+import { FileSpreadsheet, Upload, Database, Shield, Key, AlertTriangle } from "lucide-react";
+import { importJufoExcel, getDatabaseStats, getLatestDatabaseYear } from "@/utils/jufo-data";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated, setAuthenticated } from "@/utils/auth";
+import { isAuthenticated, setAuthenticated, updatePassword, getPasswordRequirements } from "@/utils/auth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const Admin: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [stats, setStats] = useState({ 
     totalEntries: 0, 
     currentYearEntries: 0,
@@ -25,10 +34,12 @@ const Admin: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  // Check authentication
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/login');
     } else {
+      // Load stats once authenticated
       setStats(getDatabaseStats());
     }
   }, [navigate]);
@@ -51,6 +62,7 @@ const Admin: React.FC = () => {
 
     try {
       setTimeout(() => setProgress(50), 500);
+      
       const result = await importJufoExcel(file);
       setTimeout(() => setProgress(100), 200);
       
@@ -59,6 +71,7 @@ const Admin: React.FC = () => {
         description: `Imported ${result.count} entries from JUFO database.`,
       });
       
+      // Update stats
       setStats(getDatabaseStats());
     } catch (error: any) {
       toast({
@@ -68,6 +81,7 @@ const Admin: React.FC = () => {
       });
     } finally {
       setIsImporting(false);
+      // Reset file input
       e.target.value = '';
     }
   };
@@ -80,6 +94,42 @@ const Admin: React.FC = () => {
     });
     navigate('/login');
   };
+  
+  const handlePasswordUpdate = async () => {
+    // Reset error
+    setPasswordError('');
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All fields are required');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    
+    const result = await updatePassword(currentPassword, newPassword);
+    
+    if (result.success) {
+      toast({
+        title: "Password updated",
+        description: "Your password has been updated successfully",
+      });
+      
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsPasswordOpen(false);
+      setShowPasswordRequirements(false);
+    } else {
+      setPasswordError(result.error || 'Failed to update password');
+    }
+  };
+
+  const passwordRequirements = getPasswordRequirements();
 
   return (
     <div className="container mx-auto py-8">
@@ -91,7 +141,10 @@ const Admin: React.FC = () => {
           Database Management System
         </p>
         <div className="flex justify-center gap-2">
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/')}
+          >
             Return to Main Application
           </Button>
           <Button 
@@ -105,6 +158,92 @@ const Admin: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 gap-8 max-w-3xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Key className="mr-2 h-5 w-5" />
+              Security Settings
+            </CardTitle>
+            <CardDescription>
+              Update your admin password and manage security settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Collapsible open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  {isPasswordOpen ? "Cancel" : "Change Password"}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <div className="space-y-4">
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      For security, please use a strong password that meets all requirements below.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input 
+                      id="current-password" 
+                      type="password" 
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input 
+                      id="new-password" 
+                      type="password" 
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setShowPasswordRequirements(e.target.value.length > 0);
+                      }}
+                    />
+                  </div>
+                  
+                  {showPasswordRequirements && (
+                    <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+                      <p className="font-medium mb-2">Password Requirements:</p>
+                      <ul className="space-y-1">
+                        {passwordRequirements.map((req, index) => (
+                          <li key={index}>• {req}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input 
+                      id="confirm-password" 
+                      type="password" 
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  
+                  {passwordError && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>{passwordError}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <Button onClick={handlePasswordUpdate} className="w-full">
+                    Update Password
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
