@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,7 +128,12 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto flex items-center justify-center min-h-screen px-4">
+    <div className="container mx-auto min-h-screen px-4 py-8">
+      <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity w-fit mb-8">
+        <img src="/logo.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
+        <span className="text-xl font-bold text-primary">SciFilter</span>
+      </Link>
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
       <div className="max-w-md w-full">
         <Card>
           <CardHeader className="text-center">
@@ -244,6 +249,7 @@ const Login: React.FC = () => {
             </Button>
           </CardFooter>
         </Card>
+      </div>
       </div>
     </div>
   );

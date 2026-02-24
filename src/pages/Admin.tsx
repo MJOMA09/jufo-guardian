@@ -6,7 +6,7 @@ import { FileSpreadsheet, Upload, Database, Shield, Loader2 } from "lucide-react
 import { importJufoExcel, getDatabaseStats, loadFromCloud, subscribeToChanges } from "@/utils/jufo-data";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { isAuthenticated, setAuthenticated } from "@/utils/auth";
 
 const Admin: React.FC = () => {
@@ -108,16 +108,14 @@ const Admin: React.FC = () => {
 
   return (
     <div className="container mx-auto py-8">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
-          <Shield className="mr-2 h-6 w-6 text-purple-600" /> SciFilter Admin
-        </h1>
-        <p className="text-lg font-medium text-purple-600 mb-2">
-          Database Management System
-        </p>
-        <div className="flex justify-center gap-2">
+      <nav className="flex items-center justify-between mb-6">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <img src="/logo.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
+          <span className="text-xl font-bold text-primary">SciFilter</span>
+        </Link>
+        <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/')}>
-            Return to Main Application
+            Main App
           </Button>
           <Button 
             variant="outline" 
@@ -127,6 +125,14 @@ const Admin: React.FC = () => {
             Logout
           </Button>
         </div>
+      </nav>
+      <header className="mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
+          <Shield className="mr-2 h-6 w-6 text-purple-600" /> SciFilter Admin
+        </h1>
+        <p className="text-lg font-medium text-purple-600 mb-2">
+          Database Management System
+        </p>
       </header>
 
       <div className="grid grid-cols-1 gap-8 max-w-3xl mx-auto">
