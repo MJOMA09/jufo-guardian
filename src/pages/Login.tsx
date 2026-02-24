@@ -7,7 +7,7 @@ import { Shield, LogIn, Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { setAuthenticated, isAuthenticated } from "@/utils/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
+
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 
@@ -47,24 +47,22 @@ const Login: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("send-otp", {
-        body: { email: trimmedEmail },
-      });
-
-      if (fnError) {
-        const msg = fnError.message || "Failed to send code";
-        // Try parsing the error body for a user-friendly message
-        try {
-          const parsed = JSON.parse(msg);
-          setError(parsed.error || msg);
-        } catch {
-          setError(msg);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ email: trimmedEmail }),
         }
-        return;
-      }
+      );
+      const data = await res.json();
 
-      if (data?.error) {
-        setError(data.error);
+      if (!res.ok || data?.error) {
+        setError(data?.error || "Failed to send code");
         return;
       }
 
@@ -90,22 +88,22 @@ const Login: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("verify-otp", {
-        body: { email: email.trim().toLowerCase(), otp },
-      });
-
-      if (fnError) {
-        try {
-          const parsed = JSON.parse(fnError.message);
-          setError(parsed.error || "Verification failed");
-        } catch {
-          setError("Verification failed");
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ email: email.trim().toLowerCase(), otp }),
         }
-        return;
-      }
+      );
+      const data = await res.json();
 
-      if (data?.error) {
-        setError(data.error);
+      if (!res.ok || data?.error) {
+        setError(data?.error || "Verification failed");
         return;
       }
 
