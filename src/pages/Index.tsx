@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { checkJufoQuality } from "@/utils/jufo-api";
+import { loadFromCloud } from "@/utils/jufo-data";
 import { exportToCSV, exportToExcel } from "@/utils/export-utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,11 @@ const Index = () => {
   const { toast } = useToast();
   const isCheckingRef = useRef(false);
   const hasExtractedRef = useRef(false);
+
+  // Preload JUFO cloud data on mount
+  useEffect(() => {
+    loadFromCloud();
+  }, []);
 
   const addPublication = (publication: Publication) => {
     setPublications((prev) => [...prev, publication]);

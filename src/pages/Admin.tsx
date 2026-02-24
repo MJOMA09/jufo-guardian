@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileSpreadsheet, Upload, Database, Shield } from "lucide-react";
-import { importJufoExcel, getDatabaseStats, subscribeToChanges } from "@/utils/jufo-data";
+import { FileSpreadsheet, Upload, Database, Shield, Loader2 } from "lucide-react";
+import { importJufoExcel, getDatabaseStats, loadFromCloud, subscribeToChanges } from "@/utils/jufo-data";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import { isAuthenticated, setAuthenticated } from "@/utils/auth";
 const Admin: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ 
     totalEntries: 0, 
     currentYearEntries: 0,
@@ -30,13 +31,17 @@ const Admin: React.FC = () => {
     if (!isAuthenticated()) {
       navigate('/login');
     } else {
-      setStats(getDatabaseStats());
+      loadFromCloud().then(() => {
+        setStats(getDatabaseStats());
+        setIsLoading(false);
+      });
     }
   }, [navigate]);
 
   // Subscribe to real-time database changes
   useEffect(() => {
-    const unsubscribe = subscribeToChanges(() => {
+    const unsubscribe = subscribeToChanges(async () => {
+      await loadFromCloud();
       setStats(getDatabaseStats());
     });
     return unsubscribe;
@@ -74,9 +79,10 @@ const Admin: React.FC = () => {
       
       toast({
         title: "Import Successful",
-        description: `Imported ${result.count} entries from JUFO database.`,
+        description: `Imported ${result.count} entries to the cloud database.`,
       });
       
+      await loadFromCloud();
       setStats(getDatabaseStats());
     } catch (error: any) {
       toast({
@@ -135,7 +141,12 @@ const Admin: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {stats.totalEntries > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading database...</span>
+              </div>
+            ) : stats.totalEntries > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -144,9 +155,9 @@ const Admin: React.FC = () => {
                       {stats.totalEntries} publications indexed ({stats.currentYearEntries} for {stats.latestYear})
                     </p>
                   </div>
-                  <Button onClick={() => document.getElementById('jufo-file')?.click()}>
+                  <Button onClick={() => document.getElementById('jufo-file')?.click()} disabled={isImporting}>
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Update Database
+                    {isImporting ? "Importing..." : "Update Database"}
                   </Button>
                 </div>
                 
@@ -172,6 +183,13 @@ const Admin: React.FC = () => {
                     <div className="text-xs text-muted-foreground">Not Evaluated</div>
                   </div>
                 </div>
+                
+                {isImporting && (
+                  <div className="space-y-2">
+                    <Progress value={progress} />
+                    <p className="text-xs text-center text-muted-foreground">Uploading to cloud database...</p>
+                  </div>
+                )}
                 
                 <Alert>
                   <AlertDescription className="text-sm text-muted-foreground">
@@ -200,7 +218,7 @@ const Admin: React.FC = () => {
                 {isImporting && (
                   <div className="space-y-2">
                     <Progress value={progress} />
-                    <p className="text-xs text-center text-muted-foreground">Processing JUFO data...</p>
+                    <p className="text-xs text-center text-muted-foreground">Uploading to cloud database...</p>
                   </div>
                 )}
               </div>

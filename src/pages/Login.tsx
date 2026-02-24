@@ -107,6 +107,7 @@ const Login: React.FC = () => {
         return;
       }
 
+      sessionStorage.setItem("scifilter-admin-token", "admin-verified");
       setAuthenticated(true);
       toast({
         title: "Login successful",
