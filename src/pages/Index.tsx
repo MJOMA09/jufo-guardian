@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
@@ -26,12 +26,22 @@ const Index = () => {
   const [currentlyChecking, setCurrentlyChecking] = useState<string>("");
   const [exportFormat, setExportFormat] = useState<"csv" | "excel">("excel");
   const { toast } = useToast();
+  const isCheckingRef = useRef(false);
+  const hasExtractedRef = useRef(false);
 
   const addPublication = (publication: Publication) => {
     setPublications((prev) => [...prev, publication]);
   };
 
   const extractPublications = (extractedPubs: Partial<Publication>[]) => {
+    if (hasExtractedRef.current) {
+      toast({
+        title: "Already Extracted",
+        description: "Publications have already been extracted. Would you like to check JUFO quality?",
+      });
+      return;
+    }
+    
     const newPublications = extractedPubs.map((pub) => ({
       ...pub,
       id: pub.id || uuidv4(),
@@ -43,9 +53,17 @@ const Index = () => {
     } as Publication));
     
     setPublications((prev) => [...prev, ...newPublications]);
+    hasExtractedRef.current = true;
   };
 
   const checkAllPublications = async () => {
+    if (isCheckingRef.current) {
+      toast({
+        title: "Check Already In Progress",
+        description: "Please wait for the current check to finish.",
+      });
+      return;
+    }
     if (publications.length === 0) {
       toast({
         title: "No Publications",
@@ -66,6 +84,7 @@ const Index = () => {
     }
 
     setIsChecking(true);
+    isCheckingRef.current = true;
     setCheckingProgress(0);
     setCurrentlyChecking("");
     
@@ -168,6 +187,7 @@ const Index = () => {
     
     setPublications(updatedPublications);
     setIsChecking(false);
+    isCheckingRef.current = false;
     setCheckingProgress(100);
     setCurrentlyChecking("");
     

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { FileSpreadsheet, Upload, Database, Shield } from "lucide-react";
-import { importJufoExcel, getDatabaseStats } from "@/utils/jufo-data";
+import { importJufoExcel, getDatabaseStats, subscribeToChanges } from "@/utils/jufo-data";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +24,7 @@ const Admin: React.FC = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const importInProgressRef = useRef(false);
   
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -33,9 +34,25 @@ const Admin: React.FC = () => {
     }
   }, [navigate]);
 
+  // Subscribe to real-time database changes
+  useEffect(() => {
+    const unsubscribe = subscribeToChanges(() => {
+      setStats(getDatabaseStats());
+    });
+    return unsubscribe;
+  }, []);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (importInProgressRef.current) {
+      toast({
+        title: "Import Already In Progress",
+        description: "Please wait for the current import to finish.",
+      });
+      return;
+    }
 
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
       toast({
@@ -47,6 +64,7 @@ const Admin: React.FC = () => {
     }
 
     setIsImporting(true);
+    importInProgressRef.current = true;
     setProgress(25);
 
     try {
@@ -68,6 +86,7 @@ const Admin: React.FC = () => {
       });
     } finally {
       setIsImporting(false);
+      importInProgressRef.current = false;
       e.target.value = '';
     }
   };
