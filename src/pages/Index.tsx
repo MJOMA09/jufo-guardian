@@ -270,7 +270,11 @@ const Index = () => {
   return (
     <div className="container mx-auto py-8 min-h-screen flex flex-col">
       {/* Top navigation with Admin Link */}
-      <nav className="flex justify-end mb-4">
+      <nav className="flex items-center justify-between mb-4">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <img src="/logo.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
+          <span className="text-xl font-bold text-primary">SciFilter</span>
+        </Link>
         <Link 
           to="/login" 
           className="text-sm text-muted-foreground hover:text-primary transition-colors"
