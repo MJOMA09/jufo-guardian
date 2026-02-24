@@ -1,4 +1,4 @@
-import { useLocation, Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
 const NotFound = () => {
@@ -12,21 +12,13 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-      <div className="container mx-auto py-8">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity w-fit">
-          <img src="https://i.postimg.cc/brfdbfVz/Screenshot-2026-02-02-214153.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
-          <span className="text-xl font-bold text-primary">SciFilter</span>
-        </Link>
-      </div>
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">404</h1>
-          <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-          <Link to="/" className="text-primary hover:underline">
-            Return to Home
-          </Link>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">404</h1>
+        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
+        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
+          Return to Home
+        </a>
       </div>
     </div>
   );

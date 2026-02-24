@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import PublicationForm from "@/components/PublicationForm";
 import FileUpload from "@/components/FileUpload";
@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { checkJufoQuality } from "@/utils/jufo-api";
-import { loadFromCloud } from "@/utils/jufo-data";
 import { exportToCSV, exportToExcel } from "@/utils/export-utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -27,27 +26,12 @@ const Index = () => {
   const [currentlyChecking, setCurrentlyChecking] = useState<string>("");
   const [exportFormat, setExportFormat] = useState<"csv" | "excel">("excel");
   const { toast } = useToast();
-  const isCheckingRef = useRef(false);
-  const hasExtractedRef = useRef(false);
-
-  // Preload JUFO cloud data on mount
-  useEffect(() => {
-    loadFromCloud();
-  }, []);
 
   const addPublication = (publication: Publication) => {
     setPublications((prev) => [...prev, publication]);
   };
 
   const extractPublications = (extractedPubs: Partial<Publication>[]) => {
-    if (hasExtractedRef.current) {
-      toast({
-        title: "Already Extracted",
-        description: "Publications have already been extracted. Would you like to check JUFO quality?",
-      });
-      return;
-    }
-    
     const newPublications = extractedPubs.map((pub) => ({
       ...pub,
       id: pub.id || uuidv4(),
@@ -59,17 +43,9 @@ const Index = () => {
     } as Publication));
     
     setPublications((prev) => [...prev, ...newPublications]);
-    hasExtractedRef.current = true;
   };
 
   const checkAllPublications = async () => {
-    if (isCheckingRef.current) {
-      toast({
-        title: "Check Already In Progress",
-        description: "Please wait for the current check to finish.",
-      });
-      return;
-    }
     if (publications.length === 0) {
       toast({
         title: "No Publications",
@@ -90,7 +66,6 @@ const Index = () => {
     }
 
     setIsChecking(true);
-    isCheckingRef.current = true;
     setCheckingProgress(0);
     setCurrentlyChecking("");
     
@@ -193,7 +168,6 @@ const Index = () => {
     
     setPublications(updatedPublications);
     setIsChecking(false);
-    isCheckingRef.current = false;
     setCheckingProgress(100);
     setCurrentlyChecking("");
     
@@ -270,11 +244,7 @@ const Index = () => {
   return (
     <div className="container mx-auto py-8 min-h-screen flex flex-col">
       {/* Top navigation with Admin Link */}
-      <nav className="flex items-center justify-between mb-4">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <img src="https://i.postimg.cc/brfdbfVz/Screenshot-2026-02-02-214153.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
-          <span className="text-xl font-bold text-primary">SciFilter</span>
-        </Link>
+      <nav className="flex justify-end mb-4">
         <Link 
           to="/login" 
           className="text-sm text-muted-foreground hover:text-primary transition-colors"

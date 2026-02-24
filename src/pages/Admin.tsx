@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileSpreadsheet, Upload, Database, Shield, Loader2 } from "lucide-react";
-import { importJufoExcel, getDatabaseStats, loadFromCloud, subscribeToChanges } from "@/utils/jufo-data";
+import { FileSpreadsheet, Upload, Database, Shield } from "lucide-react";
+import { importJufoExcel, getDatabaseStats } from "@/utils/jufo-data";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { isAuthenticated, setAuthenticated } from "@/utils/auth";
 
 const Admin: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ 
     totalEntries: 0, 
     currentYearEntries: 0,
@@ -25,39 +24,18 @@ const Admin: React.FC = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const importInProgressRef = useRef(false);
   
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/login');
     } else {
-      loadFromCloud().then(() => {
-        setStats(getDatabaseStats());
-        setIsLoading(false);
-      });
+      setStats(getDatabaseStats());
     }
   }, [navigate]);
-
-  // Subscribe to real-time database changes
-  useEffect(() => {
-    const unsubscribe = subscribeToChanges(async () => {
-      await loadFromCloud();
-      setStats(getDatabaseStats());
-    });
-    return unsubscribe;
-  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (importInProgressRef.current) {
-      toast({
-        title: "Import Already In Progress",
-        description: "Please wait for the current import to finish.",
-      });
-      return;
-    }
 
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
       toast({
@@ -69,7 +47,6 @@ const Admin: React.FC = () => {
     }
 
     setIsImporting(true);
-    importInProgressRef.current = true;
     setProgress(25);
 
     try {
@@ -79,10 +56,9 @@ const Admin: React.FC = () => {
       
       toast({
         title: "Import Successful",
-        description: `Imported ${result.count} entries to the cloud database.`,
+        description: `Imported ${result.count} entries from JUFO database.`,
       });
       
-      await loadFromCloud();
       setStats(getDatabaseStats());
     } catch (error: any) {
       toast({
@@ -92,7 +68,6 @@ const Admin: React.FC = () => {
       });
     } finally {
       setIsImporting(false);
-      importInProgressRef.current = false;
       e.target.value = '';
     }
   };
@@ -108,14 +83,16 @@ const Admin: React.FC = () => {
 
   return (
     <div className="container mx-auto py-8">
-      <nav className="flex items-center justify-between mb-6">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <img src="https://i.postimg.cc/brfdbfVz/Screenshot-2026-02-02-214153.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
-          <span className="text-xl font-bold text-primary">SciFilter</span>
-        </Link>
-        <div className="flex gap-2">
+      <header className="mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
+          <Shield className="mr-2 h-6 w-6 text-purple-600" /> SciFilter Admin
+        </h1>
+        <p className="text-lg font-medium text-purple-600 mb-2">
+          Database Management System
+        </p>
+        <div className="flex justify-center gap-2">
           <Button variant="outline" onClick={() => navigate('/')}>
-            Main App
+            Return to Main Application
           </Button>
           <Button 
             variant="outline" 
@@ -125,14 +102,6 @@ const Admin: React.FC = () => {
             Logout
           </Button>
         </div>
-      </nav>
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
-          <Shield className="mr-2 h-6 w-6 text-purple-600" /> SciFilter Admin
-        </h1>
-        <p className="text-lg font-medium text-purple-600 mb-2">
-          Database Management System
-        </p>
       </header>
 
       <div className="grid grid-cols-1 gap-8 max-w-3xl mx-auto">
@@ -147,12 +116,7 @@ const Admin: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Loading database...</span>
-              </div>
-            ) : stats.totalEntries > 0 ? (
+            {stats.totalEntries > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -161,9 +125,9 @@ const Admin: React.FC = () => {
                       {stats.totalEntries} publications indexed ({stats.currentYearEntries} for {stats.latestYear})
                     </p>
                   </div>
-                  <Button onClick={() => document.getElementById('jufo-file')?.click()} disabled={isImporting}>
+                  <Button onClick={() => document.getElementById('jufo-file')?.click()}>
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    {isImporting ? "Importing..." : "Update Database"}
+                    Update Database
                   </Button>
                 </div>
                 
@@ -189,13 +153,6 @@ const Admin: React.FC = () => {
                     <div className="text-xs text-muted-foreground">Not Evaluated</div>
                   </div>
                 </div>
-                
-                {isImporting && (
-                  <div className="space-y-2">
-                    <Progress value={progress} />
-                    <p className="text-xs text-center text-muted-foreground">Uploading to cloud database...</p>
-                  </div>
-                )}
                 
                 <Alert>
                   <AlertDescription className="text-sm text-muted-foreground">
@@ -224,7 +181,7 @@ const Admin: React.FC = () => {
                 {isImporting && (
                   <div className="space-y-2">
                     <Progress value={progress} />
-                    <p className="text-xs text-center text-muted-foreground">Uploading to cloud database...</p>
+                    <p className="text-xs text-center text-muted-foreground">Processing JUFO data...</p>
                   </div>
                 )}
               </div>

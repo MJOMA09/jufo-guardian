@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { processFileAndExtractPublications } from "@/utils/document-processor";
@@ -16,7 +16,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [securityWarning, setSecurityWarning] = useState<string | null>(null);
-  const extractingRef = useRef(false);
   const { toast } = useToast();
 
   // Security configuration
@@ -151,14 +150,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
       return;
     }
 
-    if (extractingRef.current) {
-      toast({
-        title: "Extraction In Progress",
-        description: "Please wait for the current extraction to finish.",
-      });
-      return;
-    }
-
     // Final security check
     const validation = validateFile(file);
     if (!validation.isValid) {
@@ -170,7 +161,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
       return;
     }
 
-    extractingRef.current = true;
     setIsLoading(true);
     try {
       const publications = await processFileAndExtractPublications(file);
@@ -197,7 +187,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onExtractPublications }) => {
       });
     } finally {
       setIsLoading(false);
-      extractingRef.current = false;
     }
   };
 

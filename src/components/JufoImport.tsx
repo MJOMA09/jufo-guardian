@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, RefreshCw, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { getDatabaseStats, getDatabaseMetadata, loadFromCloud, subscribeToChanges } from "@/utils/jufo-data";
+import { Database, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { getDatabaseStats, getDatabaseMetadata, reloadFromStorage, subscribeToChanges } from "@/utils/jufo-data";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -18,68 +18,58 @@ interface DatabaseStats {
 }
 
 const JufoImport: React.FC = () => {
-  const [stats, setStats] = useState<DatabaseStats>({
-    totalEntries: 0, currentYearEntries: 0, latestYear: new Date().getFullYear(),
-    level0: 0, level1: 0, level2: 0, level3: 0, notEvaluated: 0,
-  });
-  const [metadata, setMetadata] = useState<any>(null);
+  const [stats, setStats] = useState<DatabaseStats>(getDatabaseStats());
+  const [metadata, setMetadata] = useState(getDatabaseMetadata());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   
   const hasData = stats.totalEntries > 0;
 
-  const refreshData = useCallback(async () => {
-    await loadFromCloud();
+  // Refresh stats from storage
+  const refreshData = useCallback(() => {
+    reloadFromStorage();
     setStats(getDatabaseStats());
-    const meta = await getDatabaseMetadata();
-    setMetadata(meta);
+    setMetadata(getDatabaseMetadata());
   }, []);
 
+  // Auto-load database on mount and subscribe to cross-tab changes
   useEffect(() => {
-    refreshData().finally(() => setIsLoading(false));
+    // Initial load
+    refreshData();
     
+    // Subscribe to changes from other tabs (admin uploads)
     const unsubscribe = subscribeToChanges(() => {
+      console.log('📡 Database updated, refreshing client view...');
       refreshData();
     });
     
+    // Cleanup subscription on unmount
     return unsubscribe;
   }, [refreshData]);
 
-  const handleRefresh = async () => {
+  // Refresh database from storage (in case admin updated it)
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    await refreshData();
-    setIsRefreshing(false);
+    setTimeout(() => {
+      reloadFromStorage();
+      setStats(getDatabaseStats());
+      setMetadata(getDatabaseMetadata());
+      setIsRefreshing(false);
+    }, 500);
   };
 
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } catch {
       return 'Unknown';
     }
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Database className="mr-2 h-5 w-5" />
-            JUFO Reference Database
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Loading database...</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>

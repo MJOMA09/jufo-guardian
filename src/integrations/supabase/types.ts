@@ -41,69 +41,6 @@ export type Database = {
         }
         Relationships: []
       }
-      jufo_entries: {
-        Row: {
-          created_at: string
-          evaluated: boolean | null
-          id: string
-          issn: string | null
-          level: number
-          name: string
-          norwegian_level: number | null
-          publisher: string | null
-          type: string | null
-          year: number | null
-        }
-        Insert: {
-          created_at?: string
-          evaluated?: boolean | null
-          id?: string
-          issn?: string | null
-          level?: number
-          name: string
-          norwegian_level?: number | null
-          publisher?: string | null
-          type?: string | null
-          year?: number | null
-        }
-        Update: {
-          created_at?: string
-          evaluated?: boolean | null
-          id?: string
-          issn?: string | null
-          level?: number
-          name?: string
-          norwegian_level?: number | null
-          publisher?: string | null
-          type?: string | null
-          year?: number | null
-        }
-        Relationships: []
-      }
-      jufo_metadata: {
-        Row: {
-          entry_count: number
-          id: string
-          latest_year: number
-          updated_at: string
-          version: number
-        }
-        Insert: {
-          entry_count?: number
-          id?: string
-          latest_year?: number
-          updated_at?: string
-          version?: number
-        }
-        Update: {
-          entry_count?: number
-          id?: string
-          latest_year?: number
-          updated_at?: string
-          version?: number
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
