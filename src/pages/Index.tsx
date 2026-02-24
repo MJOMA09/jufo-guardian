@@ -272,7 +272,7 @@ const Index = () => {
       {/* Top navigation with Admin Link */}
       <nav className="flex items-center justify-between mb-4">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <img src="/logo.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
+          <img src="https://i.postimg.cc/brfdbfVz/Screenshot-2026-02-02-214153.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
           <span className="text-xl font-bold text-primary">SciFilter</span>
         </Link>
         <Link 

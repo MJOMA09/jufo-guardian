@@ -15,7 +15,7 @@ const NotFound = () => {
     <div className="min-h-screen flex flex-col bg-gray-100">
       <div className="container mx-auto py-8">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity w-fit">
-          <img src="/logo.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
+          <img src="https://i.postimg.cc/brfdbfVz/Screenshot-2026-02-02-214153.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
           <span className="text-xl font-bold text-primary">SciFilter</span>
         </Link>
       </div>

@@ -130,7 +130,7 @@ const Login: React.FC = () => {
   return (
     <div className="container mx-auto min-h-screen px-4 py-8">
       <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity w-fit mb-8">
-        <img src="/logo.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
+        <img src="https://i.postimg.cc/brfdbfVz/Screenshot-2026-02-02-214153.png" alt="SciFilter Logo" className="h-10 w-10 rounded" />
         <span className="text-xl font-bold text-primary">SciFilter</span>
       </Link>
       <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
