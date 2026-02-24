@@ -13,6 +13,14 @@ let latestDatabaseYear: number = new Date().getFullYear();
 // Track database version for sync
 let databaseVersion: number = 0;
 
+// BroadcastChannel for instant same-browser sync
+let broadcastChannel: BroadcastChannel | null = null;
+try {
+  broadcastChannel = new BroadcastChannel('scifilter-jufo-sync');
+} catch {
+  console.log('BroadcastChannel not supported, falling back to storage events only');
+}
+
 /**
  * Initialize database from localStorage on module load
  */
@@ -49,6 +57,9 @@ const saveToStorage = (): void => {
     localStorage.setItem(JUFO_DATABASE_KEY, JSON.stringify(jufoDatabase));
     localStorage.setItem(JUFO_METADATA_KEY, JSON.stringify(metadata));
     console.log(`✅ JUFO database saved to storage: ${jufoDatabase.length} entries, version ${databaseVersion}`);
+    
+    // Broadcast change to all tabs (including the current one via BroadcastChannel)
+    broadcastChannel?.postMessage({ type: 'jufo-updated', version: databaseVersion });
   } catch (error) {
     console.error('Failed to save JUFO database to storage:', error);
   }
@@ -88,18 +99,30 @@ export const getDatabaseVersion = (): number => {
  * Subscribe to database changes (for cross-tab sync)
  */
 export const subscribeToChanges = (callback: () => void): (() => void) => {
+  // Listen for storage events (fires in OTHER tabs)
   const handleStorageChange = (event: StorageEvent) => {
     if (event.key === JUFO_METADATA_KEY || event.key === JUFO_DATABASE_KEY) {
-      console.log('🔄 Database changed in another tab, reloading...');
+      console.log('🔄 Database changed in another tab (storage event), reloading...');
+      initializeFromStorage();
+      callback();
+    }
+  };
+  
+  // Listen for BroadcastChannel messages (fires in ALL tabs including current)
+  const handleBroadcast = (event: MessageEvent) => {
+    if (event.data?.type === 'jufo-updated') {
+      console.log('🔄 Database changed (broadcast), reloading...');
       initializeFromStorage();
       callback();
     }
   };
   
   window.addEventListener('storage', handleStorageChange);
+  broadcastChannel?.addEventListener('message', handleBroadcast);
   
   return () => {
     window.removeEventListener('storage', handleStorageChange);
+    broadcastChannel?.removeEventListener('message', handleBroadcast);
   };
 };
 
