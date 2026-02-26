@@ -152,27 +152,19 @@ const Admin: React.FC = () => {
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-5 gap-3 mt-4">
-                    <div className="rounded-md border p-3">
-                      <div className="text-2xl font-bold">{stats.level3}</div>
-                      <div className="text-xs text-muted-foreground">Level 3</div>
-                    </div>
-                    <div className="rounded-md border p-3">
-                      <div className="text-2xl font-bold">{stats.level2}</div>
-                      <div className="text-xs text-muted-foreground">Level 2</div>
-                    </div>
-                    <div className="rounded-md border p-3">
-                      <div className="text-2xl font-bold">{stats.level1}</div>
-                      <div className="text-xs text-muted-foreground">Level 1</div>
-                    </div>
-                    <div className="rounded-md border p-3">
-                      <div className="text-2xl font-bold">{stats.level0}</div>
-                      <div className="text-xs text-muted-foreground">Level 0</div>
-                    </div>
-                    <div className="rounded-md border p-3">
-                      <div className="text-2xl font-bold">{stats.notEvaluated}</div>
-                      <div className="text-xs text-muted-foreground">Not Evaluated</div>
-                    </div>
+                  <div className="grid grid-cols-1 gap-2 mt-4">
+                    {[
+                      { value: stats.level3, label: "Level 3" },
+                      { value: stats.level2, label: "Level 2" },
+                      { value: stats.level1, label: "Level 1" },
+                      { value: stats.level0, label: "Level 0" },
+                      { value: stats.notEvaluated, label: "Not Evaluated" },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-md border p-4 text-center">
+                        <div className="text-2xl font-bold">{item.value.toLocaleString()}</div>
+                        <div className="text-sm text-muted-foreground">{item.label}</div>
+                      </div>
+                    ))}
                   </div>
                   
                   <Alert>
