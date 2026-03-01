@@ -239,6 +239,15 @@ const Index = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       <div className="container mx-auto py-8 flex-1 flex flex-col">
+        {/* Top navigation with Admin Link */}
+        <nav className="flex justify-end mb-4">
+          <Link 
+            to="/login" 
+            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            Admin Sign In
+          </Link>
+        </nav>
         
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
