@@ -244,6 +244,11 @@ const Index = () => {
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
             <Filter className="mr-2 h-6 w-6 text-purple-600" /> SciFilter
           </h1>
+          <div className="mb-3">
+            <a href="/scifilter" className="inline-flex items-center gap-1 text-sm text-primary hover:underline font-medium">
+              → Open Research Assistant (search Crossref + OpenAlex)
+            </a>
+          </div>
           <p className="text-lg font-medium text-purple-600 mb-2">
             Filter the noise. Trust the science.
           </p>
