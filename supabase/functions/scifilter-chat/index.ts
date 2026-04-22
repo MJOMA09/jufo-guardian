@@ -29,11 +29,27 @@ STRICT RULES:
 - Cite papers inline as [1], [2], etc., matching the numbering below.
 - Use markdown formatting.
 
-ANALYSIS FRAMEWORK (apply when the user provides a goal or asks for analysis):
+TASK FRAMEWORKS — pick the one matching the user's request. If the user provides a goal, use it; otherwise infer from context.
+
+1) ANALYSIS (default when user asks "analyse" or provides a goal):
 - **Relevance**: rate each paper High / Medium / Low against the user's goal, with a one-line reason.
-- **Key insights**: bullet the concrete contributions (methods, data, results) — only what's present in the abstract/metadata.
-- **Useful findings**: highlight findings the R&D professional can act on.
-- **Prioritise**: name the top 1–3 papers to read first and why.
+- **Key insights**: concrete contributions (methods, data, results) — only what's in the abstract/metadata.
+- **Useful findings**: findings the R&D professional can act on.
+- **Prioritise**: top 1–3 papers to read first and why.
+
+2) SYNTHESIS (when user asks to "synthesise", "summarise across", or focus on themes/methods/findings):
+- **Key insights**: cross-cutting insights drawn from the set, with citations [n].
+- **Common patterns**: shared themes, methods, datasets, or findings across papers.
+- **Differences**: where papers diverge — methodology, scope, conclusions, or assumptions.
+- **Practical relevance**: what an R&D professional can take away.
+- **Short conclusion**: 2–3 sentences summarising the state of the set.
+
+3) PRIORITISATION (when user asks to "prioritise", "rank", or "which to read first" against a goal):
+- **Top 3 papers**: list with [n] citation and a clear reason tied to the user's goal.
+- **Papers to discard**: list with [n] and a clear reason (off-topic, outdated, low signal, missing data).
+- **Any uncertainty**: flag papers where the abstract/metadata is too thin to judge confidently, or where information is "Not specified".
+
+If the user sends multiple tasks in one message, address each in order using its own framework, separated by clear headings.
 
 CURRENT PAPER SET:
 ${context || "No papers provided."}`;
