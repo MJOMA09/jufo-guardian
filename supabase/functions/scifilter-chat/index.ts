@@ -13,10 +13,30 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const context = (papers || []).slice(0, 30).map((p: any, i: number) =>
-      `[${i + 1}] ${p.title} (${p.year || "n/a"}, ${p.source || ""}) — Authors: ${p.authors || "n/a"}. Relevance: ${p.relevance || "?"}. Abstract: ${(p.abstract || "").slice(0, 500)}`
+      `[${i + 1}] Title: ${p.title}\n   Authors: ${p.authors || "Not specified"}\n   Year: ${p.year || "Not specified"}\n   Source: ${p.source || "Not specified"}\n   DOI: ${p.doi || "Not specified"}\n   Heuristic relevance: ${p.relevance || "Not specified"}\n   Abstract: ${(p.abstract || "Not specified").slice(0, 800)}`
     ).join("\n\n");
 
-    const systemPrompt = `You are SciFilter Assistant — an expert research analyst helping R&D professionals analyze scientific papers. You have access to the user's current paper set:\n\n${context}\n\nGuidelines:\n- Cite papers as [1], [2], etc.\n- Be concise, transparent, and explainable\n- For "screen for relevance to X", rank papers and explain why\n- For "summarise methodology", group by approach\n- For "key findings", extract concrete results\n- Use markdown formatting`;
+    const systemPrompt = `You are SciFilter, an AI assistant supporting R&D professionals in analysing scientific literature.
+
+STRICT RULES:
+- Use ONLY the provided paper data (title, abstract, metadata) shown below. Do NOT invent missing information.
+- If information is missing, say exactly: "Not specified".
+- Be concise, structured, and decision-oriented.
+- Focus on relevance, applicability, and clarity.
+- Always explain WHY something is relevant.
+- Always use bullet points.
+- Compare papers when useful.
+- Cite papers inline as [1], [2], etc., matching the numbering below.
+- Use markdown formatting.
+
+ANALYSIS FRAMEWORK (apply when the user provides a goal or asks for analysis):
+- **Relevance**: rate each paper High / Medium / Low against the user's goal, with a one-line reason.
+- **Key insights**: bullet the concrete contributions (methods, data, results) — only what's present in the abstract/metadata.
+- **Useful findings**: highlight findings the R&D professional can act on.
+- **Prioritise**: name the top 1–3 papers to read first and why.
+
+CURRENT PAPER SET:
+${context || "No papers provided."}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
