@@ -104,6 +104,131 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scifilter_papers: {
+        Row: {
+          abstract: string | null
+          authors: string | null
+          citations: number | null
+          concepts: Json | null
+          created_at: string
+          doi: string | null
+          explanation: string | null
+          feedback: string | null
+          id: string
+          relevance: string | null
+          relevance_score: number | null
+          search_id: string
+          source: string | null
+          title: string
+          url: string | null
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          abstract?: string | null
+          authors?: string | null
+          citations?: number | null
+          concepts?: Json | null
+          created_at?: string
+          doi?: string | null
+          explanation?: string | null
+          feedback?: string | null
+          id?: string
+          relevance?: string | null
+          relevance_score?: number | null
+          search_id: string
+          source?: string | null
+          title: string
+          url?: string | null
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          abstract?: string | null
+          authors?: string | null
+          citations?: number | null
+          concepts?: Json | null
+          created_at?: string
+          doi?: string | null
+          explanation?: string | null
+          feedback?: string | null
+          id?: string
+          relevance?: string | null
+          relevance_score?: number | null
+          search_id?: string
+          source?: string | null
+          title?: string
+          url?: string | null
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scifilter_papers_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "scifilter_searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scifilter_searches: {
+        Row: {
+          created_at: string
+          domain: string | null
+          id: string
+          query: string
+          user_id: string
+          year_from: number | null
+          year_to: number | null
+        }
+        Insert: {
+          created_at?: string
+          domain?: string | null
+          id?: string
+          query: string
+          user_id: string
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string | null
+          id?: string
+          query?: string
+          user_id?: string
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
