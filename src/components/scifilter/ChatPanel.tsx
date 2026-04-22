@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-interface Props { papers: any[]; }
+interface Props { papers: any[]; goal?: string; }
 
 const QUICK_PROMPTS = [
   "Which papers are most relevant?",
@@ -17,9 +17,26 @@ const QUICK_PROMPTS = [
   "Compare the approaches",
 ];
 
+const ANALYSE_TEMPLATE = (goal: string) => `Task: Analyse the following papers based on this goal:
+
+[USER GOAL]
+${goal || "(no goal provided — infer from the paper set)"}
+
+Instructions:
+- Assess relevance (High / Medium / Low) for each paper
+- Explain why (keyword match, domain match, recency)
+- Summarise key insights across the set
+- Highlight useful findings
+- Identify the best papers to prioritise
+
+Output:
+- Structured bullets
+- Clear and concise
+- Cite papers as [1], [2], etc.`;
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scifilter-chat`;
 
-export default function ChatPanel({ papers }: Props) {
+export default function ChatPanel({ papers, goal }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -110,6 +127,10 @@ export default function ChatPanel({ papers }: Props) {
           {messages.length === 0 && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Ask anything about your current papers:</p>
+              <Button size="sm" className="w-full" onClick={() => send(ANALYSE_TEMPLATE(goal || ""))}>
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Analyse papers against my goal
+              </Button>
               <div className="flex flex-wrap gap-2">
                 {QUICK_PROMPTS.map(p => (
                   <Button key={p} size="sm" variant="outline" className="text-xs h-auto py-1.5" onClick={() => send(p)}>
