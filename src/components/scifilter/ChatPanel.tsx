@@ -36,7 +36,7 @@ Output:
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scifilter-chat`;
 
-export default function ChatPanel({ papers }: Props) {
+export default function ChatPanel({ papers, goal }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -127,6 +127,10 @@ export default function ChatPanel({ papers }: Props) {
           {messages.length === 0 && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Ask anything about your current papers:</p>
+              <Button size="sm" className="w-full" onClick={() => send(ANALYSE_TEMPLATE(goal || ""))}>
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Analyse papers against my goal
+              </Button>
               <div className="flex flex-wrap gap-2">
                 {QUICK_PROMPTS.map(p => (
                   <Button key={p} size="sm" variant="outline" className="text-xs h-auto py-1.5" onClick={() => send(p)}>

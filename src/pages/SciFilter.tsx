@@ -249,7 +249,7 @@ export default function SciFilter() {
           </main>
 
           <aside className="border-l bg-card lg:h-[calc(100vh-57px)] lg:sticky lg:top-[57px]">
-            <ChatPanel papers={visible} />
+            <ChatPanel papers={visible} goal={query} />
           </aside>
         </div>
       </div>
