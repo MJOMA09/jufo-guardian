@@ -131,115 +131,21 @@ export type Database = {
         }
         Relationships: []
       }
-      scifilter_annotations: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          is_shared: boolean
-          kind: string
-          paper_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          is_shared?: boolean
-          kind?: string
-          paper_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          is_shared?: boolean
-          kind?: string
-          paper_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      scifilter_collections: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_shared: boolean
-          name: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_shared?: boolean
-          name: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_shared?: boolean
-          name?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      scifilter_comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          paper_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          paper_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          paper_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       scifilter_papers: {
         Row: {
           abstract: string | null
-          applicability: string | null
           authors: string | null
           citations: number | null
-          collection_id: string | null
           concepts: Json | null
-          confidence: number | null
           created_at: string
           doi: string | null
           explanation: string | null
           feedback: string | null
           id: string
-          methodology: string | null
-          reason_breakdown: Json | null
-          related_authors: Json | null
           relevance: string | null
           relevance_score: number | null
           search_id: string
           source: string | null
-          summary: string | null
           title: string
           url: string | null
           user_id: string
@@ -247,25 +153,18 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
-          applicability?: string | null
           authors?: string | null
           citations?: number | null
-          collection_id?: string | null
           concepts?: Json | null
-          confidence?: number | null
           created_at?: string
           doi?: string | null
           explanation?: string | null
           feedback?: string | null
           id?: string
-          methodology?: string | null
-          reason_breakdown?: Json | null
-          related_authors?: Json | null
           relevance?: string | null
           relevance_score?: number | null
           search_id: string
           source?: string | null
-          summary?: string | null
           title: string
           url?: string | null
           user_id: string
@@ -273,25 +172,18 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
-          applicability?: string | null
           authors?: string | null
           citations?: number | null
-          collection_id?: string | null
           concepts?: Json | null
-          confidence?: number | null
           created_at?: string
           doi?: string | null
           explanation?: string | null
           feedback?: string | null
           id?: string
-          methodology?: string | null
-          reason_breakdown?: Json | null
-          related_authors?: Json | null
           relevance?: string | null
           relevance_score?: number | null
           search_id?: string
           source?: string | null
-          summary?: string | null
           title?: string
           url?: string | null
           user_id?: string

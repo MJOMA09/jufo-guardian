@@ -1,4 +1,4 @@
-// Search Crossref + OpenAlex and AI-score relevance with explainability
+// Search Crossref + OpenAlex and AI-score relevance
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -8,7 +8,6 @@ interface Paper {
   doi: string | null;
   title: string;
   authors: string;
-  related_authors: { name: string; works?: number }[];
   year: number | null;
   source: string;
   abstract: string;
@@ -41,102 +40,102 @@ async function fetchOpenAlex(query: string, yearFrom?: number, yearTo?: number, 
   const res = await fetch(`https://api.openalex.org/works?${params}`);
   if (!res.ok) return [];
   const data = await res.json();
-  return (data.results || []).map((w: any): Paper => {
-    const ships = w.authorships || [];
-    const authorsList = ships.slice(0, 8).map((a: any) => a.author?.display_name).filter(Boolean);
-    return {
-      doi: w.doi ? w.doi.replace("https://doi.org/", "") : null,
-      title: w.title || "Untitled",
-      authors: authorsList.slice(0, 5).join(", "),
-      related_authors: authorsList.map((n: string) => ({ name: n })),
-      year: w.publication_year || null,
-      source: w.primary_location?.source?.display_name || w.host_venue?.display_name || "Unknown",
-      abstract: reconstructAbstract(w.abstract_inverted_index),
-      url: w.doi || w.id || "",
-      citations: w.cited_by_count || 0,
-      concepts: (w.concepts || []).slice(0, 6).map((c: any) => c.display_name),
-    };
-  });
+  return (data.results || []).map((w: any): Paper => ({
+    doi: w.doi ? w.doi.replace("https://doi.org/", "") : null,
+    title: w.title || "Untitled",
+    authors: (w.authorships || []).slice(0, 5).map((a: any) => a.author?.display_name).filter(Boolean).join(", "),
+    year: w.publication_year || null,
+    source: w.primary_location?.source?.display_name || w.host_venue?.display_name || "Unknown",
+    abstract: reconstructAbstract(w.abstract_inverted_index),
+    url: w.doi || w.id || "",
+    citations: w.cited_by_count || 0,
+    concepts: (w.concepts || []).slice(0, 5).map((c: any) => c.display_name),
+  }));
 }
 
-function heuristicBreakdown(p: Paper, query: string, domain?: string) {
+function heuristicScore(p: Paper, query: string, domain?: string): { score: number; reasons: string[] } {
   const q = query.toLowerCase();
   const keywords = q.split(/\s+/).filter(w => w.length > 2);
   const text = `${p.title} ${p.abstract}`.toLowerCase();
   const matches = keywords.filter(k => text.includes(k)).length;
-  const semantic = keywords.length ? matches / keywords.length : 0;
+  const keywordScore = keywords.length ? matches / keywords.length : 0;
   const currentYear = new Date().getFullYear();
   const recency = p.year ? Math.max(0, 1 - (currentYear - p.year) / 15) : 0;
-  const topic = domain
-    ? (p.concepts.some(c => c.toLowerCase().includes(domain.toLowerCase())) ? 1 : 0.3)
-    : 0.5;
-  const citation = Math.min(1, Math.log10(p.citations + 1) / 3);
-  const score = semantic * 0.5 + recency * 0.15 + topic * 0.2 + citation * 0.15;
-  return { semantic, recency, topic, citation, score, matches, keywordCount: keywords.length };
+  const domainMatch = domain ? p.concepts.some(c => c.toLowerCase().includes(domain.toLowerCase())) ? 1 : 0 : 0.5;
+  const citationBoost = Math.min(1, Math.log10(p.citations + 1) / 3);
+  const score = keywordScore * 0.5 + recency * 0.2 + domainMatch * 0.2 + citationBoost * 0.1;
+  const reasons: string[] = [];
+  if (matches > 0) reasons.push(`${matches}/${keywords.length} keywords matched`);
+  if (p.year && p.year >= currentYear - 3) reasons.push("recent (≤3 yrs)");
+  else if (p.year && p.year >= currentYear - 7) reasons.push("moderately recent");
+  if (domain && domainMatch === 1) reasons.push(`domain match: ${domain}`);
+  if (p.citations > 50) reasons.push(`${p.citations} citations`);
+  return { score, reasons };
 }
 
-async function aiAnalyze(papers: Paper[], query: string): Promise<Map<number, any>> {
+async function aiRelevance(papers: Paper[], query: string): Promise<Map<string, { score: number; reason: string }>> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const result = new Map<number, any>();
+  const result = new Map<string, { score: number; reason: string }>();
   if (!LOVABLE_API_KEY) return result;
 
   const slim = papers.slice(0, 25).map((p, i) => ({
-    i, title: p.title, abstract: (p.abstract || "").slice(0, 600), year: p.year, concepts: p.concepts,
+    i,
+    title: p.title,
+    abstract: (p.abstract || "").slice(0, 400),
+    year: p.year,
   }));
 
   try {
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "You are an R&D screening assistant. Analyse scientific papers transparently. Be concise and grounded in provided data — do not invent facts." },
-          { role: "user", content: `Research query: "${query}"\n\nFor each paper, produce a screening analysis.\n\nPapers:\n${JSON.stringify(slim)}` },
+          { role: "system", content: "You score paper relevance to a research query. Return concise scores." },
+          { role: "user", content: `Query: "${query}"\n\nPapers:\n${JSON.stringify(slim)}\n\nFor each paper, score 0-100 and give a one-sentence reason.` },
         ],
         tools: [{
           type: "function",
           function: {
-            name: "analyse_papers",
-            description: "Per-paper screening analysis",
+            name: "score_papers",
+            description: "Score relevance of each paper",
             parameters: {
               type: "object",
               properties: {
-                analyses: {
+                scores: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
                       i: { type: "number" },
-                      score: { type: "number", description: "0-100 relevance to query" },
-                      confidence: { type: "number", description: "0-100 AI confidence in this judgement" },
-                      summary: { type: "string", description: "1-2 sentence plain-language abstract summary" },
-                      methodology: { type: "string", description: "1 sentence on the methodology used; 'Not specified' if unclear" },
-                      why_selected: { type: "string", description: "1 sentence: why this paper is relevant to the query" },
-                      applicability: { type: "string", enum: ["High", "Medium", "Low", "Unknown"], description: "Practical R&D applicability" },
-                      methodology_match: { type: "number", description: "0-1 similarity of methodology to typical work on this query" },
+                      score: { type: "number" },
+                      reason: { type: "string" },
                     },
-                    required: ["i", "score", "confidence", "summary", "methodology", "why_selected", "applicability", "methodology_match"],
+                    required: ["i", "score", "reason"],
                   },
                 },
               },
-              required: ["analyses"],
+              required: ["scores"],
             },
           },
         }],
-        tool_choice: { type: "function", function: { name: "analyse_papers" } },
+        tool_choice: { type: "function", function: { name: "score_papers" } },
       }),
     });
 
-    if (!res.ok) {
-      console.error("AI status", res.status);
-      return result;
-    }
+    if (!res.ok) return result;
     const data = await res.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!args) return result;
     const parsed = JSON.parse(args);
-    for (const a of parsed.analyses || []) result.set(a.i, a);
+    for (const s of parsed.scores || []) {
+      const p = papers[s.i];
+      if (p) result.set(p.title, { score: s.score / 100, reason: s.reason });
+    }
   } catch (e) {
     console.error("AI scoring error:", e);
   }
@@ -155,39 +154,17 @@ Deno.serve(async (req) => {
     }
 
     const papers = await fetchOpenAlex(query, yearFrom, yearTo, domain);
-    const aiMap = await aiAnalyze(papers, query);
+    const aiScores = await aiRelevance(papers, query);
 
-    const enriched = papers.map((p, i) => {
-      const h = heuristicBreakdown(p, query, domain);
-      const ai = aiMap.get(i);
-      const aiScore = ai ? ai.score / 100 : null;
-      const finalScore = aiScore !== null ? aiScore * 0.7 + h.score * 0.3 : h.score;
+    const enriched = papers.map(p => {
+      const heur = heuristicScore(p, query, domain);
+      const ai = aiScores.get(p.title);
+      const finalScore = ai ? (ai.score * 0.7 + heur.score * 0.3) : heur.score;
       const relevance = finalScore >= 0.65 ? "High" : finalScore >= 0.4 ? "Medium" : "Low";
-
-      const reason_breakdown = {
-        semantic: Number(h.semantic.toFixed(2)),
-        methodology: ai ? Number(ai.methodology_match.toFixed(2)) : 0.5,
-        topic: Number(h.topic.toFixed(2)),
-        author: 0.5, // placeholder until we have author-graph data
-        citation: Number(h.citation.toFixed(2)),
-        keyword_matches: `${h.matches}/${h.keywordCount}`,
-      };
-
-      const explanation = ai?.why_selected
-        ? `${ai.why_selected}${h.matches ? ` (${h.matches}/${h.keywordCount} keywords matched)` : ""}.`
-        : (h.matches ? `${h.matches}/${h.keywordCount} keywords matched` : "Limited signal match.");
-
-      return {
-        ...p,
-        relevance,
-        relevance_score: finalScore,
-        confidence: ai ? ai.confidence / 100 : 0.4,
-        summary: ai?.summary ?? (p.abstract ? p.abstract.slice(0, 220) + "…" : "Not specified"),
-        methodology: ai?.methodology ?? "Not specified",
-        applicability: ai?.applicability ?? "Unknown",
-        explanation,
-        reason_breakdown,
-      };
+      const explanation = ai
+        ? `${ai.reason} ${heur.reasons.length ? "Signals: " + heur.reasons.join("; ") + "." : ""}`
+        : heur.reasons.length ? heur.reasons.join("; ") : "Limited signal match.";
+      return { ...p, relevance, relevance_score: finalScore, explanation };
     }).sort((a, b) => b.relevance_score - a.relevance_score);
 
     return new Response(JSON.stringify({ papers: enriched }), {
