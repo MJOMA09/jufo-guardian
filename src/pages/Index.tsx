@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,6 @@ import {
   Network,
   Workflow,
   ShieldCheck,
-  FileText,
   Search,
   Quote,
   CheckCircle2,
