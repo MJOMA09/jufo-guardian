@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, ExternalLink, Sparkles, Users, GitBranch, AlertTriangle, FileText, TrendingUp } from "lucide-react";
+import { Loader2, ExternalLink, Sparkles, Users, GitBranch, AlertTriangle, FileText, TrendingUp, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Paper } from "@/types/scifilter";
 
@@ -114,7 +114,7 @@ export default function ContextPanel({ focusedPaper, allPapers }: Props) {
           </div>
         </Section>
 
-        <Section icon={<svg className="h-3.5 w-3.5" />} title="Citation signal">
+        <Section icon={<BarChart3 className="h-3.5 w-3.5" />} title="Citation signal">
           <CitationBars papers={[focusedPaper, ...connected.map(c => c.p)]} />
         </Section>
 
