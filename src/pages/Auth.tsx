@@ -66,7 +66,7 @@ const Auth = () => {
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-2 mb-2">
             <Filter className="h-6 w-6 text-primary" />
-            <span className="text-2xl font-bold">SciFilter</span>
+            <span className="text-2xl font-bold">Sifter</span>
           </Link>
           <CardDescription>Sign in to access the research assistant</CardDescription>
         </CardHeader>

@@ -99,11 +99,10 @@ const Admin: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
       <div className="container mx-auto py-8">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center">
-            <Shield className="mr-2 h-6 w-6 text-purple-600" /> SciFilter Admin
+            <Shield className="mr-2 h-6 w-6 text-purple-600" /> Sifter Admin
           </h1>
           <p className="text-lg font-medium text-purple-600 mb-2">
             Database Management System
