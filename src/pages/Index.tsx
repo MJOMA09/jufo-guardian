@@ -66,7 +66,7 @@ const Nav = () => (
         <Link to="/auth" className="hidden sm:inline-flex">
           <Button variant="ghost" size="sm">Sign in</Button>
         </Link>
-        <Link to="/scifilter">
+        <Link to="/app">
           <Button size="sm" className="bg-accent-gradient text-primary-foreground hover:opacity-90 shadow-soft">
             Start Screening
           </Button>
@@ -240,7 +240,7 @@ const Index = () => {
               </Reveal>
               <Reveal delay={240}>
                 <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <Link to="/scifilter">
+                  <Link to="/app">
                     <Button size="lg" className="bg-accent-gradient text-primary-foreground hover:opacity-90 shadow-elevated h-12 px-6 text-base">
                       Start Screening
                       <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -372,7 +372,7 @@ const Index = () => {
                 Free for R&amp;D professionals. Sign in and run your first screening session in under a minute.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                <Link to="/scifilter">
+                <Link to="/app">
                   <Button size="lg" className="bg-accent-gradient text-primary-foreground hover:opacity-90 shadow-elevated h-12 px-7 text-base">
                     Start Screening
                     <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -400,7 +400,7 @@ const Index = () => {
           <div className="flex items-center gap-6">
             <a href="#workflow" className="hover:text-foreground transition-colors">Workflow</a>
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <Link to="/scifilter" className="hover:text-foreground transition-colors">Launch app</Link>
+            <Link to="/app" className="hover:text-foreground transition-colors">Launch app</Link>
           </div>
         </div>
       </footer>

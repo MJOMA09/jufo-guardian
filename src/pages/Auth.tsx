@@ -20,10 +20,10 @@ const Auth = () => {
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) navigate("/scifilter");
+      if (session) navigate("/app");
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/scifilter");
+      if (session) navigate("/app");
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
@@ -34,7 +34,7 @@ const Auth = () => {
     const { error } = await supabase.auth.signUp({
       email, password,
       options: {
-        emailRedirectTo: `${window.location.origin}/scifilter`,
+        emailRedirectTo: `${window.location.origin}/app`,
         data: { display_name: displayName || email.split("@")[0] },
       },
     });
@@ -53,7 +53,7 @@ const Auth = () => {
 
   const handleGoogle = async () => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/scifilter` });
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/app` });
     if (result.error) {
       toast({ title: "Google sign in failed", description: String(result.error), variant: "destructive" });
       setLoading(false);
