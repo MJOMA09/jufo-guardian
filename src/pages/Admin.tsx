@@ -108,7 +108,7 @@ const Admin: React.FC = () => {
             Database Management System
           </p>
           <div className="flex justify-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/')}>
+            <Button variant="outline" onClick={() => navigate('/app')}>
               Return to Main Application
             </Button>
             <Button 
