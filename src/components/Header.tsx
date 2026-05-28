@@ -10,7 +10,7 @@ const Header: React.FC = () => {
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img
             src={LOGO_URL}
-            alt="SciFilter Logo"
+            alt="Sifter Logo"
             className="h-8 w-auto object-contain"
           />
         </Link>

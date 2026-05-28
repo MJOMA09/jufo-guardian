@@ -77,7 +77,6 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
       <div className="container mx-auto flex items-center justify-center flex-1 px-4">
         <div className="max-w-md w-full">
           <Card>
@@ -85,7 +84,7 @@ const Login: React.FC = () => {
               <div className="flex justify-center mb-2">
                 <Shield className="h-12 w-12 text-purple-600" />
               </div>
-              <CardTitle className="text-2xl">SciFilter Admin Login</CardTitle>
+              <CardTitle className="text-2xl">Sifter Admin Login</CardTitle>
               <CardDescription>
                 {step === "email" ? "Enter your admin email to receive a login code" : "Enter the 6-digit code sent to your email"}
               </CardDescription>

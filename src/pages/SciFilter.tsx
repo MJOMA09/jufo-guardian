@@ -123,7 +123,7 @@ export default function SciFilter() {
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `scifilter-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.href = url; a.download = `sifter-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
   };
 
@@ -144,7 +144,7 @@ export default function SciFilter() {
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
               <Filter className="h-5 w-5 text-primary" />
-              <span className="font-bold text-lg">SciFilter</span>
+              <span className="font-bold text-lg">Sifter</span>
             </Link>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
