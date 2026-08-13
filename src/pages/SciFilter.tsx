@@ -21,6 +21,7 @@ import {
   ChevronRight, Sparkles, Beaker, Gauge, Plus, MessageSquare, LayoutGrid,
 } from "lucide-react";
 import ChatPanel from "@/components/scifilter/ChatPanel";
+import CollaborationPanel from "@/components/scifilter/CollaborationPanel";
 
 type Paper = {
   id?: string;
