@@ -84,7 +84,7 @@ export default function Workspace() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [highOnly, setHighOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [centerTab, setCenterTab] = useState<"screening" | "assistant">("screening");
+  const [centerTab, setCenterTab] = useState<"screening" | "assistant" | "collaboration">("screening");
   const [openSection, setOpenSection] = useState<string>("projects");
 
   useEffect(() => {
