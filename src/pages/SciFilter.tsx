@@ -292,10 +292,11 @@ export default function Workspace() {
                 <TabsList className="h-8">
                   <TabsTrigger value="screening" className="text-xs gap-1.5"><Beaker className="h-3.5 w-3.5" />Screening</TabsTrigger>
                   <TabsTrigger value="assistant" className="text-xs gap-1.5"><MessageSquare className="h-3.5 w-3.5" />AI Assistant</TabsTrigger>
+                  <TabsTrigger value="collaboration" className="text-xs gap-1.5"><Users className="h-3.5 w-3.5" />Collaboration</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="flex-1" />
-              {papers.length > 0 && (
+              {centerTab === "screening" && papers.length > 0 && (
                 <>
                   <div className="flex items-center gap-2">
                     <Switch id="high" checked={highOnly} onCheckedChange={setHighOnly} />
@@ -311,6 +312,8 @@ export default function Workspace() {
             <div className="flex-1 min-h-0 overflow-hidden">
               {centerTab === "assistant" ? (
                 <ChatPanel papers={visible} />
+              ) : centerTab === "collaboration" ? (
+                <CollaborationPanel papers={visible} selectedId={selectedId} onSelect={setSelectedId} currentUserEmail={user?.email} />
               ) : (
                 <div className="h-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
                   {/* Results list */}
