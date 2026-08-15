@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import ChatPanel from "@/components/scifilter/ChatPanel";
 import CollaborationPanel from "@/components/scifilter/CollaborationPanel";
+import ExplainabilityPanel from "@/components/scifilter/ExplainabilityPanel";
 
 type Paper = {
   id?: string;
