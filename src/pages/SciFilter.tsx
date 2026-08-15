@@ -375,23 +375,7 @@ export default function Workspace() {
                           <div className="text-xs text-muted-foreground">{selected.authors} · {selected.year} · {selected.source}</div>
                         </div>
 
-                        <Card className="p-3 bg-accent/40 border-accent">
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">
-                            <Sparkles className="h-3 w-3" />Why AI selected this paper
-                          </div>
-                          <p className="text-sm text-foreground/90">{selected.explanation || "Not specified"}</p>
-                        </Card>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <Card className="p-3">
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Methodology</div>
-                            <div className="text-sm font-medium">{methodologyHint(selected)}</div>
-                          </Card>
-                          <Card className="p-3">
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Practical applicability</div>
-                            <div className="text-sm font-medium">{applicability(selected)}</div>
-                          </Card>
-                        </div>
+                        <ExplainabilityPanel paper={selected} papers={visible} query={query} onFeedback={handleFeedback} />
 
                         <div>
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Abstract summary</div>
