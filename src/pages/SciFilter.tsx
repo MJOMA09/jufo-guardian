@@ -23,6 +23,7 @@ import {
 import ChatPanel from "@/components/scifilter/ChatPanel";
 import CollaborationPanel from "@/components/scifilter/CollaborationPanel";
 import ExplainabilityPanel from "@/components/scifilter/ExplainabilityPanel";
+import KnowledgeGraphPanel from "@/components/scifilter/KnowledgeGraphPanel";
 
 type Paper = {
   id?: string;
@@ -85,7 +86,7 @@ export default function Workspace() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [highOnly, setHighOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [centerTab, setCenterTab] = useState<"screening" | "assistant" | "collaboration">("screening");
+  const [centerTab, setCenterTab] = useState<"screening" | "assistant" | "collaboration" | "graph">("screening");
   const [openSection, setOpenSection] = useState<string>("projects");
 
   useEffect(() => {
@@ -294,6 +295,7 @@ export default function Workspace() {
                   <TabsTrigger value="screening" className="text-xs gap-1.5"><Beaker className="h-3.5 w-3.5" />Screening</TabsTrigger>
                   <TabsTrigger value="assistant" className="text-xs gap-1.5"><MessageSquare className="h-3.5 w-3.5" />AI Assistant</TabsTrigger>
                   <TabsTrigger value="collaboration" className="text-xs gap-1.5"><Users className="h-3.5 w-3.5" />Collaboration</TabsTrigger>
+                  <TabsTrigger value="graph" className="text-xs gap-1.5"><Network className="h-3.5 w-3.5" />Network</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="flex-1" />
@@ -315,6 +317,8 @@ export default function Workspace() {
                 <ChatPanel papers={visible} />
               ) : centerTab === "collaboration" ? (
                 <CollaborationPanel papers={visible} selectedId={selectedId} onSelect={setSelectedId} currentUserEmail={user?.email} />
+              ) : centerTab === "graph" ? (
+                <KnowledgeGraphPanel papers={visible} query={query} selectedId={selectedId} onSelect={setSelectedId} />
               ) : (
                 <div className="h-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
                   {/* Results list */}
