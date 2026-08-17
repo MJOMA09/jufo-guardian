@@ -65,14 +65,8 @@ const applicability = (p: Paper) => {
   return "Applied research";
 };
 
-const LEFT_SECTIONS = [
-  { key: "projects", label: "Projects", icon: FolderKanban, items: ["Solid-state batteries", "Green hydrogen scan", "Bio-inks Q3"] },
-  { key: "teams", label: "Teams", icon: Users, items: ["Materials group", "R&D Central", "Innovation scouts"] },
-  { key: "saved", label: "Saved Searches", icon: Bookmark, items: ["\"graphene supercapacitor\" 2023–", "perovskite tandem cells"] },
-  { key: "collections", label: "Research Collections", icon: Library, items: ["Core references", "Competitor patents", "Method benchmarks"] },
-  { key: "history", label: "Workflow History", icon: History, items: ["Screening — Mon 14:20", "Synthesis — Fri", "Prioritisation — last week"] },
-  { key: "notes", label: "Shared Notes", icon: StickyNote, items: ["Kickoff brief", "Screening criteria v2", "Handover to eng."] },
-];
+type Row = { id: string; label: string; sub?: string };
+
 
 export default function Workspace() {
   const navigate = useNavigate();
