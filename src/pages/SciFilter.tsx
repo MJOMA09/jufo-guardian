@@ -65,14 +65,8 @@ const applicability = (p: Paper) => {
   return "Applied research";
 };
 
-const LEFT_SECTIONS = [
-  { key: "projects", label: "Projects", icon: FolderKanban, items: ["Solid-state batteries", "Green hydrogen scan", "Bio-inks Q3"] },
-  { key: "teams", label: "Teams", icon: Users, items: ["Materials group", "R&D Central", "Innovation scouts"] },
-  { key: "saved", label: "Saved Searches", icon: Bookmark, items: ["\"graphene supercapacitor\" 2023–", "perovskite tandem cells"] },
-  { key: "collections", label: "Research Collections", icon: Library, items: ["Core references", "Competitor patents", "Method benchmarks"] },
-  { key: "history", label: "Workflow History", icon: History, items: ["Screening — Mon 14:20", "Synthesis — Fri", "Prioritisation — last week"] },
-  { key: "notes", label: "Shared Notes", icon: StickyNote, items: ["Kickoff brief", "Screening criteria v2", "Handover to eng."] },
-];
+type Row = { id: string; label: string; sub?: string };
+
 
 export default function Workspace() {
   const navigate = useNavigate();
@@ -90,6 +84,14 @@ export default function Workspace() {
   const [centerTab, setCenterTab] = useState<"screening" | "assistant" | "collaboration" | "graph" | "agents">("screening");
   const [openSection, setOpenSection] = useState<string>("projects");
 
+  // Workspace data
+  const [projects, setProjects] = useState<Row[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [savedSearches, setSavedSearches] = useState<any[]>([]);
+  const [collections, setCollections] = useState<Row[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
+
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
@@ -102,30 +104,53 @@ export default function Workspace() {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim() || !user) return;
+  const loadWorkspace = async () => {
+    const [pr, ss, co, hi, no] = await Promise.all([
+      supabase.from("scifilter_projects").select("*").order("created_at", { ascending: false }),
+      supabase.from("scifilter_saved_searches").select("*").order("created_at", { ascending: false }),
+      supabase.from("scifilter_collections").select("*").order("created_at", { ascending: false }),
+      supabase.from("scifilter_searches").select("*").order("created_at", { ascending: false }).limit(20),
+      supabase.from("scifilter_notes").select("*").order("updated_at", { ascending: false }).limit(30),
+    ]);
+    setProjects((pr.data || []).map(p => ({ id: p.id, label: p.name, sub: p.description ?? undefined })));
+    setCurrentProjectId(prev => prev ?? (pr.data?.[0]?.id ?? null));
+    setSavedSearches(ss.data || []);
+    setCollections((co.data || []).map(c => ({ id: c.id, label: c.name })));
+    setHistory(hi.data || []);
+    setNotes(no.data || []);
+  };
+
+  useEffect(() => { if (user) loadWorkspace(); }, [user?.id]);
+
+  const runSearch = async (params?: { query?: string; yearFrom?: string; yearTo?: string; domain?: string }) => {
+    const q = (params?.query ?? query).trim();
+    const yf = params?.yearFrom ?? yearFrom;
+    const yt = params?.yearTo ?? yearTo;
+    const dm = params?.domain ?? domain;
+    if (!q || !user) return;
+    setQuery(q); setYearFrom(yf); setYearTo(yt); setDomain(dm);
     setSearching(true);
     setPapers([]);
     setSelectedId(null);
+    setCenterTab("screening");
 
     try {
       const { data, error } = await supabase.functions.invoke("scifilter-search", {
         body: {
-          query,
-          yearFrom: yearFrom ? parseInt(yearFrom) : undefined,
-          yearTo: yearTo ? parseInt(yearTo) : undefined,
-          domain: domain || undefined,
+          query: q,
+          yearFrom: yf ? parseInt(yf) : undefined,
+          yearTo: yt ? parseInt(yt) : undefined,
+          domain: dm || undefined,
         },
       });
       if (error) throw error;
       const found: Paper[] = data.papers || [];
 
       const { data: search, error: sErr } = await supabase.from("scifilter_searches").insert({
-        user_id: user.id, query,
-        year_from: yearFrom ? parseInt(yearFrom) : null,
-        year_to: yearTo ? parseInt(yearTo) : null,
-        domain: domain || null,
+        user_id: user.id, query: q,
+        year_from: yf ? parseInt(yf) : null,
+        year_to: yt ? parseInt(yt) : null,
+        domain: dm || null,
       }).select().single();
       if (sErr) throw sErr;
 
@@ -143,12 +168,84 @@ export default function Workspace() {
         setSelectedId(list[0]?.id ?? null);
       }
       toast({ title: "Search complete", description: `Found ${found.length} papers.` });
+      loadWorkspace();
     } catch (e: any) {
       toast({ title: "Search failed", description: e.message, variant: "destructive" });
     } finally {
       setSearching(false);
     }
   };
+
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); runSearch(); };
+
+  const openHistory = async (searchId: string, q: string) => {
+    setSearching(true);
+    setCenterTab("screening");
+    try {
+      const { data, error } = await supabase.from("scifilter_papers").select("*").eq("search_id", searchId);
+      if (error) throw error;
+      const list = (data || []).map(r => ({ ...r, concepts: (r.concepts as string[]) || [] })) as Paper[];
+      setQuery(q);
+      setPapers(list);
+      setSelectedId(list[0]?.id ?? null);
+      toast({ title: "Loaded from history", description: `${list.length} papers restored.` });
+    } catch (e: any) {
+      toast({ title: "Could not load", description: e.message, variant: "destructive" });
+    } finally { setSearching(false); }
+  };
+
+  const createProject = async () => {
+    const name = window.prompt("Project name")?.trim();
+    if (!name || !user) return;
+    const { data, error } = await supabase.from("scifilter_projects").insert({ user_id: user.id, name }).select().single();
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    setCurrentProjectId(data.id);
+    toast({ title: "Project created", description: name });
+    loadWorkspace();
+  };
+
+  const createCollection = async () => {
+    const name = window.prompt("Collection name")?.trim();
+    if (!name || !user) return;
+    const { error } = await supabase.from("scifilter_collections").insert({ user_id: user.id, name });
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Collection created", description: name });
+    loadWorkspace();
+  };
+
+  const saveCurrentSearch = async () => {
+    if (!user) return;
+    if (!query.trim()) return toast({ title: "Nothing to save", description: "Run or type a search first." });
+    const label = window.prompt("Label for this saved search", query)?.trim();
+    if (!label) return;
+    const { error } = await supabase.from("scifilter_saved_searches").insert({
+      user_id: user.id, label, query,
+      year_from: yearFrom ? parseInt(yearFrom) : null,
+      year_to: yearTo ? parseInt(yearTo) : null,
+      domain: domain || null,
+    });
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Search saved", description: label });
+    loadWorkspace();
+  };
+
+  const createNote = async () => {
+    if (!user) return;
+    const title = window.prompt("Note title")?.trim();
+    if (!title) return;
+    const content = window.prompt("Note content", "")?.trim() ?? "";
+    const { error } = await supabase.from("scifilter_notes").insert({ user_id: user.id, title, content });
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Note added", description: title });
+    loadWorkspace();
+  };
+
+  const newWorkflow = () => {
+    setPapers([]); setSelectedId(null); setQuery(""); setYearFrom(""); setYearTo(""); setDomain("");
+    setHighOnly(false); setCenterTab("screening");
+    toast({ title: "New workflow", description: "Workspace cleared — start a fresh screening run." });
+  };
+
 
   const handleFeedback = async (paper: Paper, value: "relevant" | "not_relevant") => {
     if (!paper.id) return;
