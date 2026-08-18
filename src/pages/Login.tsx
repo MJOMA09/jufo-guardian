@@ -1,132 +1,79 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Shield, LogIn, Mail, ArrowLeft, Loader2 } from "lucide-react";
-import { setAuthenticated, isAuthenticated } from "@/utils/auth";
-import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
-import Header from "@/components/Header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Filter, Loader2, Shield } from "lucide-react";
 
-type Step = "email" | "otp";
-
-const Login: React.FC = () => {
+export default function Login() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [countdown, setCountdown] = useState(0);
+
+  const routeSignedInUser = async (userId: string) => {
+    const { data, error: roleError } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (roleError) throw roleError;
+    navigate(data ? "/admin" : "/app", { replace: true });
+  };
 
   useEffect(() => {
-    if (isAuthenticated()) navigate("/admin");
-  }, [navigate]);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        try { await routeSignedInUser(session.user.id); }
+        catch { setError("Unable to verify your account permissions."); }
+      }
+      setLoading(false);
+    });
+  }, []);
 
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+  const signIn = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError || !data.user) {
+      setError(signInError?.message || "Sign in failed.");
+      setLoading(false);
+      return;
     }
-  }, [countdown]);
-
-  const handleSendOtp = async () => {
-    setError("");
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) { setError("Please enter your email address"); return; }
-    setIsLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ email: trimmedEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok || data?.error) { setError(data?.error || "Failed to send code"); return; }
-      setStep("otp");
-      setCountdown(60);
-      toast({ title: "Code sent", description: "Check your email for the login code." });
-    } catch { setError("An error occurred. Please try again."); }
-    finally { setIsLoading(false); }
+      const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
+      if (roleError) throw roleError;
+      if (!isAdmin) {
+        setError("This account does not have administrator access.");
+        setLoading(false);
+        return;
+      }
+      navigate("/admin", { replace: true });
+    } catch {
+      setError("Unable to verify administrator access.");
+      setLoading(false);
+    }
   };
-
-  const handleVerifyOtp = async () => {
-    setError("");
-    if (otp.length !== 6) { setError("Please enter the 6-digit code"); return; }
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), otp }),
-      });
-      const data = await res.json();
-      if (!res.ok || data?.error) { setError(data?.error || "Verification failed"); return; }
-      setAuthenticated(true);
-      toast({ title: "Login successful", description: "Welcome to the admin panel" });
-      navigate("/admin");
-    } catch { setError("An error occurred. Please try again."); }
-    finally { setIsLoading(false); }
-  };
-
-  const handleBack = () => { setStep("email"); setOtp(""); setError(""); };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="container mx-auto flex items-center justify-center flex-1 px-4">
-        <div className="max-w-md w-full">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-2">
-                <Shield className="h-12 w-12 text-purple-600" />
-              </div>
-              <CardTitle className="text-2xl">Sifter Admin Login</CardTitle>
-              <CardDescription>
-                {step === "email" ? "Enter your admin email to receive a login code" : "Enter the 6-digit code sent to your email"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-              {step === "email" ? (
-                <div className="space-y-2">
-                  <Label htmlFor="email">Admin Email</Label>
-                  <Input id="email" type="email" placeholder="Enter admin email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} onKeyDown={(e) => e.key === "Enter" && handleSendOtp()} disabled={isLoading} />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <button onClick={handleBack} className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-1" /> Change email
-                  </button>
-                  <p className="text-sm text-muted-foreground">Code sent to <strong>{email}</strong></p>
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={otp} onChange={(value) => { setOtp(value); setError(""); }}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  {countdown > 0 ? (
-                    <p className="text-xs text-center text-muted-foreground">Resend code in {countdown}s</p>
-                  ) : (
-                    <button onClick={handleSendOtp} className="text-xs text-primary hover:underline w-full text-center" disabled={isLoading}>Resend code</button>
-                  )}
-                </div>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" onClick={step === "email" ? handleSendOtp : handleVerifyOtp} disabled={isLoading}>
-                {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{step === "email" ? "Sending..." : "Verifying..."}</>) : step === "email" ? (<><Mail className="mr-2 h-4 w-4" />Send Login Code</>) : (<><LogIn className="mr-2 h-4 w-4" />Verify & Login</>)}
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-    </div>
+    <main className="min-h-screen grid place-items-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <Link to="/" className="mb-3 flex items-center justify-center gap-2"><Filter className="h-6 w-6 text-primary" /><span className="text-xl font-semibold">Sifter</span></Link>
+          <CardTitle className="flex items-center justify-center gap-2"><Shield className="h-5 w-5 text-primary" />Administrator sign in</CardTitle>
+          <CardDescription>Use your Sifter account. Access is verified from your assigned role.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={signIn} className="space-y-4">
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            <div className="space-y-2"><Label htmlFor="admin-email">Email</Label><Input id="admin-email" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="admin-password">Password</Label><Input id="admin-password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></div>
+            <Button type="submit" className="w-full" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}</Button>
+            <Button type="button" variant="ghost" className="w-full" asChild><Link to="/auth">Use the standard sign-in page</Link></Button>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
   );
-};
-
-export default Login;
+}
