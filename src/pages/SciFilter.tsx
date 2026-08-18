@@ -65,7 +65,7 @@ const applicability = (p: Paper) => {
   return "Applied research";
 };
 
-type Row = { id: string; label: string; sub?: string };
+type Row = { id: string; label?: string; name?: string; sub?: string };
 
 
 export default function Workspace() {
