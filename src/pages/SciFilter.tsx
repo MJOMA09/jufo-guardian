@@ -310,7 +310,7 @@ export default function Workspace() {
           </Link>
           <span className="text-xs text-muted-foreground">Workspace</span>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" className="gap-1.5 text-xs"><Plus className="h-3.5 w-3.5" />New workflow</Button>
+          <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={newWorkflow}><Plus className="h-3.5 w-3.5" />New workflow</Button>
           <Separator orientation="vertical" className="h-5" />
           <span className="text-xs text-muted-foreground hidden md:inline">{user?.email}</span>
           <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="h-4 w-4 mr-1" />Sign out</Button>
@@ -329,7 +329,7 @@ export default function Workspace() {
                 {[
                   {
                     key: "projects", label: "Projects", icon: FolderKanban,
-                    items: projects.map(p => ({ id: p.id, label: p.name, onClick: () => setCurrentProjectId(p.id) })),
+                    items: projects.map(p => ({ id: p.id, label: p.label || "Untitled project", onClick: () => setCurrentProjectId(p.id) })),
                     onAdd: createProject,
                   },
                   {
@@ -342,15 +342,15 @@ export default function Workspace() {
                   },
                   {
                     key: "collections", label: "Collections", icon: Library,
-                    items: collections.map(c => ({ id: c.id, label: c.name, onClick: () => setCenterTab("collaboration") })),
+                    items: collections.map(c => ({ id: c.id, label: c.label || "Untitled collection", onClick: () => setCenterTab("collaboration") })),
                     onAdd: createCollection,
                   },
                   {
-                    key: "history", label: "History", icon: History,
+                    key: "history", label: "Workflow history", icon: History,
                     items: history.map(h => ({ id: h.id, label: h.query, onClick: () => openHistory(h.id, h.query) })),
                   },
                   {
-                    key: "notes", label: "Notes", icon: StickyNote,
+                    key: "notes", label: "Shared notes", icon: StickyNote,
                     items: notes.map(n => ({ id: n.id, label: n.title, onClick: () => toast({ title: n.title, description: n.content || "No content" }) })),
                     onAdd: createNote,
                   },
@@ -370,19 +370,21 @@ export default function Workspace() {
                           {sec.items.length === 0 && (
                             <div className="px-2 py-1 text-[11px] text-muted-foreground">Nothing yet</div>
                           )}
-                          {sec.items.map(it => (
-                            <button
+                           {sec.items.map(it => (
+                             <Button
                               key={it.id}
+                               type="button"
+                               variant="ghost"
                               onClick={it.onClick}
-                              className={`w-full text-left text-xs px-2 py-1 rounded hover:bg-accent/60 truncate ${currentProjectId === it.id ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                               className={`h-auto w-full justify-start px-2 py-1 text-left text-xs font-normal ${currentProjectId === it.id ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                             >
-                              {it.label}
-                            </button>
+                               <span className="truncate">{it.label}</span>
+                             </Button>
                           ))}
                           {sec.onAdd && (
-                            <button onClick={sec.onAdd} className="w-full text-left text-[11px] text-primary hover:underline px-2 py-1 flex items-center gap-1">
+                             <Button type="button" variant="ghost" onClick={sec.onAdd} className="h-auto w-full justify-start px-2 py-1 text-[11px] text-primary">
                               <Plus className="h-3 w-3" />Add {sec.label.toLowerCase()}
-                            </button>
+                             </Button>
                           )}
                         </div>
                       </CollapsibleContent>
@@ -394,8 +396,12 @@ export default function Workspace() {
             </ScrollArea>
             <div className="p-3 border-t">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Current project</div>
-              <div className="text-sm font-medium truncate">Solid-state batteries</div>
-              <div className="text-[11px] text-muted-foreground">3 collaborators · updated today</div>
+              <div className="text-sm font-medium truncate">
+                {projects.find(project => project.id === currentProjectId)?.label || "No project selected"}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {currentProjectId ? "Active workspace" : "Create or select a project"}
+              </div>
             </div>
           </aside>
 
