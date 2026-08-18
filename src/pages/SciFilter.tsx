@@ -326,7 +326,35 @@ export default function Workspace() {
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-0.5">
-                {LEFT_SECTIONS.map(sec => {
+                {[
+                  {
+                    key: "projects", label: "Projects", icon: FolderKanban,
+                    items: projects.map(p => ({ id: p.id, label: p.name, onClick: () => setCurrentProjectId(p.id) })),
+                    onAdd: createProject,
+                  },
+                  {
+                    key: "saved", label: "Saved searches", icon: Bookmark,
+                    items: savedSearches.map(s => ({
+                      id: s.id, label: s.label,
+                      onClick: () => runSearch({ query: s.query, yearFrom: s.year_from ? String(s.year_from) : "", yearTo: s.year_to ? String(s.year_to) : "", domain: s.domain || "" }),
+                    })),
+                    onAdd: saveCurrentSearch,
+                  },
+                  {
+                    key: "collections", label: "Collections", icon: Library,
+                    items: collections.map(c => ({ id: c.id, label: c.name, onClick: () => setCenterTab("collaboration") })),
+                    onAdd: createCollection,
+                  },
+                  {
+                    key: "history", label: "History", icon: History,
+                    items: history.map(h => ({ id: h.id, label: h.query, onClick: () => openHistory(h.id, h.query) })),
+                  },
+                  {
+                    key: "notes", label: "Notes", icon: StickyNote,
+                    items: notes.map(n => ({ id: n.id, label: n.title, onClick: () => toast({ title: n.title, description: n.content || "No content" }) })),
+                    onAdd: createNote,
+                  },
+                ].map(sec => {
                   const Icon = sec.icon;
                   const open = openSection === sec.key;
                   return (
@@ -339,19 +367,29 @@ export default function Workspace() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="ml-7 mt-0.5 mb-1 space-y-0.5">
+                          {sec.items.length === 0 && (
+                            <div className="px-2 py-1 text-[11px] text-muted-foreground">Nothing yet</div>
+                          )}
                           {sec.items.map(it => (
-                            <button key={it} className="w-full text-left text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 truncate">
-                              {it}
+                            <button
+                              key={it.id}
+                              onClick={it.onClick}
+                              className={`w-full text-left text-xs px-2 py-1 rounded hover:bg-accent/60 truncate ${currentProjectId === it.id ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                              {it.label}
                             </button>
                           ))}
-                          <button className="w-full text-left text-[11px] text-primary hover:underline px-2 py-1 flex items-center gap-1">
-                            <Plus className="h-3 w-3" />Add {sec.label.toLowerCase()}
-                          </button>
+                          {sec.onAdd && (
+                            <button onClick={sec.onAdd} className="w-full text-left text-[11px] text-primary hover:underline px-2 py-1 flex items-center gap-1">
+                              <Plus className="h-3 w-3" />Add {sec.label.toLowerCase()}
+                            </button>
+                          )}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
                   );
                 })}
+
               </div>
             </ScrollArea>
             <div className="p-3 border-t">
