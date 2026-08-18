@@ -9,6 +9,12 @@ import { FileSearch, LogOut, MessageSquareText, Search, Shield, Users } from "lu
 
 type PlatformStats = { users: number; searches: number; papers: number; feedback: number };
 
+const isPlatformStats = (value: unknown): value is PlatformStats => {
+  if (!value || typeof value !== "object") return false;
+  const stats = value as Record<string, unknown>;
+  return ["users", "searches", "papers", "feedback"].every(key => typeof stats[key] === "number");
+};
+
 const statCards = [
   { key: "users", label: "Users", icon: Users },
   { key: "searches", label: "Searches", icon: Search },
@@ -29,15 +35,10 @@ export default function Admin() {
     const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" });
     if (roleError || !isAdmin) { navigate("/app", { replace: true }); return; }
 
-    const [users, searches, papers, feedback] = await Promise.all([
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("scifilter_searches").select("id", { count: "exact", head: true }),
-      supabase.from("scifilter_papers").select("id", { count: "exact", head: true }),
-      supabase.from("scifilter_papers").select("id", { count: "exact", head: true }).not("feedback", "is", null),
-    ]);
-    const firstError = [users.error, searches.error, papers.error, feedback.error].find(Boolean);
-    if (firstError) { setError(firstError.message); return; }
-    setStats({ users: users.count || 0, searches: searches.count || 0, papers: papers.count || 0, feedback: feedback.count || 0 });
+    const { data, error: statsError } = await supabase.rpc("get_sifter_admin_stats");
+    if (statsError) { setError(statsError.message); return; }
+    if (!isPlatformStats(data)) { setError("The platform statistics response was invalid."); return; }
+    setStats(data);
   }, [navigate]);
 
   useEffect(() => {
