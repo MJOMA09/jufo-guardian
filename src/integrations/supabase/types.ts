@@ -454,6 +454,8 @@ export type Database = {
     }
     Functions: {
       get_sifter_admin_stats: { Args: never; Returns: Json }
+      get_sifter_recent_searches: { Args: never; Returns: Json }
+      get_sifter_users: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
