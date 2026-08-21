@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import {
-  Users, MessageSquage, ClipboardList, Handshake, GitCompare, Clock,
+  Users, MessageSquare, ClipboardList, Handshake, GitCompare, Clock,
   Share2, Loader2, Send, CheckCircle2, CircleDashed, AlertTriangle,
   Sparkles, ChevronRight, Library, StickyNote, ShieldCheck, ArrowRight, Trash2,
 } from "lucide-react";
