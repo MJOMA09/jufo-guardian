@@ -170,7 +170,7 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
     setSaving(true);
     const { error } = await supabase.from("scifilter_comments").insert({
       paper_id: selected.id, user_id: userId, content: body, author_label: me,
-    });
+    } as any);
     setSaving(false);
     if (error) return toast({ title: "Comment not saved", description: error.message, variant: "destructive" });
     setCommentDraft("");
@@ -178,7 +178,7 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
   };
 
   const toggleResolved = async (c: Comment) => {
-    const { error } = await supabase.from("scifilter_comments").update({ resolved: !c.resolved }).eq("id", c.id);
+    const { error } = await supabase.from("scifilter_comments").update({ resolved: !c.resolved } as any).eq("id", c.id);
     if (error) return toast({ title: "Could not update", description: error.message, variant: "destructive" });
     loadActivity();
   };
