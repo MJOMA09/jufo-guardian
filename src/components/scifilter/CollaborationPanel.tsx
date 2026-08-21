@@ -53,16 +53,62 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
   const me = currentUserEmail?.split("@")[0] || "You";
 
   const [tab, setTab] = useState("queue");
+  const [userId, setUserId] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [rationale, setRationale] = useState("");
+  const [saving, setSaving] = useState(false);
   const [aiKind, setAiKind] = useState<"meeting" | "handover" | "insight" | null>(null);
   const [aiOut, setAiOut] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const selected = papers.find(p => p.id === selectedId) || null;
+  const paperIds = useMemo(() => papers.map(p => p.id).filter(Boolean) as string[], [papers]);
+  const paperIdKey = paperIds.join(",");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
+  // Load persisted team activity for the loaded corpus
+  const loadActivity = async () => {
+    if (paperIds.length === 0) { setComments([]); setDecisions([]); return; }
+    const [c, a] = await Promise.all([
+      supabase.from("scifilter_comments").select("*").in("paper_id", paperIds).order("created_at", { ascending: false }),
+      supabase.from("scifilter_annotations").select("*").in("paper_id", paperIds).eq("kind", "decision").order("updated_at", { ascending: false }),
+    ]);
+    const titleFor = (id: string) => papers.find(p => p.id === id)?.title ?? "Paper";
+    setComments((c.data || []).map((r: any) => ({
+      id: r.id, paperId: r.paper_id, author: r.author_label || (r.user_id === userId ? me : "Teammate"),
+      body: r.content, at: r.created_at, resolved: !!r.resolved, mine: r.user_id === userId,
+    })));
+    setDecisions((a.data || []).map((r: any) => {
+      let parsed: any = {};
+      try { parsed = JSON.parse(r.content); } catch { parsed = { decision: "Include", rationale: r.content }; }
+      return {
+        id: r.id, paperId: r.paper_id, label: parsed.label || titleFor(r.paper_id),
+        decision: (parsed.decision || "Include") as Decision["decision"],
+        author: parsed.author || (r.user_id === userId ? me : "Teammate"),
+        at: r.updated_at || r.created_at, rationale: parsed.rationale || "", mine: r.user_id === userId,
+      };
+    }));
+  };
+
+  useEffect(() => { loadActivity(); }, [paperIdKey, userId]);
+
+  // Realtime — team activity appears without a refresh
+  useEffect(() => {
+    if (paperIds.length === 0) return;
+    const channel = supabase
+      .channel("sifter-collab")
+      .on("postgres_changes", { event: "*", schema: "public", table: "scifilter_comments" }, () => loadActivity())
+      .on("postgres_changes", { event: "*", schema: "public", table: "scifilter_annotations" }, () => loadActivity())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [paperIdKey, userId]);
+
 
   // Shared screening queue — real papers, review state layered on top
   const queue = useMemo(() => papers.map((p, i) => {
