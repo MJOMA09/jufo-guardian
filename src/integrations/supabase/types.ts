@@ -196,24 +196,30 @@ export type Database = {
       }
       scifilter_comments: {
         Row: {
+          author_label: string | null
           content: string
           created_at: string
           id: string
           paper_id: string
+          resolved: boolean
           user_id: string
         }
         Insert: {
+          author_label?: string | null
           content: string
           created_at?: string
           id?: string
           paper_id: string
+          resolved?: boolean
           user_id: string
         }
         Update: {
+          author_label?: string | null
           content?: string
           created_at?: string
           id?: string
           paper_id?: string
+          resolved?: boolean
           user_id?: string
         }
         Relationships: []

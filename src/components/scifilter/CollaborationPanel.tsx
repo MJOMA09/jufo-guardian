@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,7 @@ import ReactMarkdown from "react-markdown";
 import {
   Users, MessageSquare, ClipboardList, Handshake, GitCompare, Clock,
   Share2, Loader2, Send, CheckCircle2, CircleDashed, AlertTriangle,
-  Sparkles, ChevronRight, Library, StickyNote, ShieldCheck, ArrowRight,
+  Sparkles, ChevronRight, Library, StickyNote, ShieldCheck, ArrowRight, Trash2,
 } from "lucide-react";
 
 interface Props {
@@ -24,10 +25,11 @@ interface Props {
   currentUserEmail?: string | null;
 }
 
-type Comment = { id: string; paperId: string | null; author: string; body: string; at: string; resolved: boolean };
-type Decision = { id: string; paperId: string | null; label: string; decision: "Include" | "Exclude" | "Escalate"; author: string; at: string; rationale: string };
+type Comment = { id: string; paperId: string | null; author: string; body: string; at: string; resolved: boolean; mine: boolean };
+type Decision = { id: string; paperId: string | null; label: string; decision: "Include" | "Exclude" | "Escalate"; author: string; at: string; rationale: string; mine: boolean };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scifilter-chat`;
+
 
 const TEAM = [
   { name: "Materials group", members: ["A. Laine", "M. Okonjo", "You"], focus: "Solid-state electrolytes" },
@@ -51,16 +53,62 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
   const me = currentUserEmail?.split("@")[0] || "You";
 
   const [tab, setTab] = useState("queue");
+  const [userId, setUserId] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [rationale, setRationale] = useState("");
+  const [saving, setSaving] = useState(false);
   const [aiKind, setAiKind] = useState<"meeting" | "handover" | "insight" | null>(null);
   const [aiOut, setAiOut] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const selected = papers.find(p => p.id === selectedId) || null;
+  const paperIds = useMemo(() => papers.map(p => p.id).filter(Boolean) as string[], [papers]);
+  const paperIdKey = paperIds.join(",");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
+  // Load persisted team activity for the loaded corpus
+  const loadActivity = async () => {
+    if (paperIds.length === 0) { setComments([]); setDecisions([]); return; }
+    const [c, a] = await Promise.all([
+      supabase.from("scifilter_comments").select("*").in("paper_id", paperIds).order("created_at", { ascending: false }),
+      supabase.from("scifilter_annotations").select("*").in("paper_id", paperIds).eq("kind", "decision").order("updated_at", { ascending: false }),
+    ]);
+    const titleFor = (id: string) => papers.find(p => p.id === id)?.title ?? "Paper";
+    setComments((c.data || []).map((r: any) => ({
+      id: r.id, paperId: r.paper_id, author: r.author_label || (r.user_id === userId ? me : "Teammate"),
+      body: r.content, at: r.created_at, resolved: !!r.resolved, mine: r.user_id === userId,
+    })));
+    setDecisions((a.data || []).map((r: any) => {
+      let parsed: any = {};
+      try { parsed = JSON.parse(r.content); } catch { parsed = { decision: "Include", rationale: r.content }; }
+      return {
+        id: r.id, paperId: r.paper_id, label: parsed.label || titleFor(r.paper_id),
+        decision: (parsed.decision || "Include") as Decision["decision"],
+        author: parsed.author || (r.user_id === userId ? me : "Teammate"),
+        at: r.updated_at || r.created_at, rationale: parsed.rationale || "", mine: r.user_id === userId,
+      };
+    }));
+  };
+
+  useEffect(() => { loadActivity(); }, [paperIdKey, userId]);
+
+  // Realtime — team activity appears without a refresh
+  useEffect(() => {
+    if (paperIds.length === 0) return;
+    const channel = supabase
+      .channel("sifter-collab")
+      .on("postgres_changes", { event: "*", schema: "public", table: "scifilter_comments" }, () => loadActivity())
+      .on("postgres_changes", { event: "*", schema: "public", table: "scifilter_annotations" }, () => loadActivity())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [paperIdKey, userId]);
+
 
   // Shared screening queue — real papers, review state layered on top
   const queue = useMemo(() => papers.map((p, i) => {
@@ -112,27 +160,55 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
     return events.sort((a, b) => +new Date(b.at) - +new Date(a.at));
   }, [comments, decisions, papers]);
 
-  const addComment = () => {
-    if (!commentDraft.trim()) return;
-    setComments(prev => [{
-      id: crypto.randomUUID(), paperId: selected?.id ?? null, author: me,
-      body: commentDraft.trim(), at: new Date().toISOString(), resolved: false,
-    }, ...prev]);
+  const addComment = async () => {
+    const body = commentDraft.trim();
+    if (!body || !userId) return;
+    if (!selected?.id) {
+      toast({ title: "Select a paper", description: "Comments are threaded on a paper — pick one from the shared queue first." });
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("scifilter_comments").insert({
+      paper_id: selected.id, user_id: userId, content: body, author_label: me,
+    } as any);
+    setSaving(false);
+    if (error) return toast({ title: "Comment not saved", description: error.message, variant: "destructive" });
     setCommentDraft("");
+    loadActivity();
   };
 
-  const record = (decision: Decision["decision"]) => {
-    if (!selected) {
+  const toggleResolved = async (c: Comment) => {
+    const { error } = await supabase.from("scifilter_comments").update({ resolved: !c.resolved } as any).eq("id", c.id);
+    if (error) return toast({ title: "Could not update", description: error.message, variant: "destructive" });
+    loadActivity();
+  };
+
+  const deleteComment = async (c: Comment) => {
+    const { error } = await supabase.from("scifilter_comments").delete().eq("id", c.id);
+    if (error) return toast({ title: "Could not delete", description: error.message, variant: "destructive" });
+    loadActivity();
+  };
+
+  const record = async (decision: Decision["decision"]) => {
+    if (!selected?.id || !userId) {
       toast({ title: "Select a paper", description: "Pick a paper from the shared queue to record a decision against it." });
       return;
     }
-    setDecisions(prev => [{
-      id: crypto.randomUUID(), paperId: selected.id, label: selected.title,
-      decision, author: me, at: new Date().toISOString(), rationale: rationale.trim(),
-    }, ...prev.filter(d => d.paperId !== selected.id)]);
+    const payload = JSON.stringify({ decision, rationale: rationale.trim(), label: selected.title, author: me });
+    const existing = decisions.find(d => d.paperId === selected.id && d.mine);
+    setSaving(true);
+    const { error } = existing
+      ? await supabase.from("scifilter_annotations").update({ content: payload }).eq("id", existing.id)
+      : await supabase.from("scifilter_annotations").insert({
+          paper_id: selected.id, user_id: userId, kind: "decision", content: payload, is_shared: true,
+        });
+    setSaving(false);
+    if (error) return toast({ title: "Decision not saved", description: error.message, variant: "destructive" });
     setRationale("");
-    toast({ title: `Decision recorded: ${decision}`, description: "Visible to everyone in this team workspace." });
+    loadActivity();
+    toast({ title: `Decision recorded: ${decision}`, description: "Saved and shared with the team workspace." });
   };
+
 
   const runAi = async (kind: "meeting" | "handover" | "insight") => {
     if (papers.length === 0) {
@@ -312,10 +388,14 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
                       {paper && <p className="mt-1.5 text-[11px] text-muted-foreground line-clamp-1">on “{paper.title}”</p>}
                       <p className="mt-1.5 text-sm whitespace-pre-wrap">{c.body}</p>
                       <div className="mt-2 flex gap-2">
-                        <Button variant="ghost" size="sm" className="h-6 text-xs"
-                          onClick={() => setComments(prev => prev.map(x => x.id === c.id ? { ...x, resolved: !x.resolved } : x))}>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => toggleResolved(c)}>
                           {c.resolved ? "Reopen" : "Mark resolved"}
                         </Button>
+                        {c.mine && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive gap-1" onClick={() => deleteComment(c)}>
+                            <Trash2 className="h-3 w-3" />Delete
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   );
@@ -325,8 +405,11 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
             <div className="border-t p-3 flex gap-2">
               <Textarea value={commentDraft} onChange={e => setCommentDraft(e.target.value)} rows={2}
                 placeholder="Add a comment, a screening rationale, or a question for the team…" className="resize-none text-sm" />
-              <Button onClick={addComment} disabled={!commentDraft.trim()} className="self-end"><Send className="h-4 w-4" /></Button>
+              <Button onClick={addComment} disabled={!commentDraft.trim() || saving} className="self-end">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
             </div>
+
           </TabsContent>
 
           {/* DECISION TRACKING */}
