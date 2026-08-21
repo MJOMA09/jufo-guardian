@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,9 +13,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import {
-  Users, MessageSquare, ClipboardList, Handshake, GitCompare, Clock,
+  Users, MessageSquage, ClipboardList, Handshake, GitCompare, Clock,
   Share2, Loader2, Send, CheckCircle2, CircleDashed, AlertTriangle,
-  Sparkles, ChevronRight, Library, StickyNote, ShieldCheck, ArrowRight,
+  Sparkles, ChevronRight, Library, StickyNote, ShieldCheck, ArrowRight, Trash2,
 } from "lucide-react";
 
 interface Props {
@@ -24,10 +25,11 @@ interface Props {
   currentUserEmail?: string | null;
 }
 
-type Comment = { id: string; paperId: string | null; author: string; body: string; at: string; resolved: boolean };
-type Decision = { id: string; paperId: string | null; label: string; decision: "Include" | "Exclude" | "Escalate"; author: string; at: string; rationale: string };
+type Comment = { id: string; paperId: string | null; author: string; body: string; at: string; resolved: boolean; mine: boolean };
+type Decision = { id: string; paperId: string | null; label: string; decision: "Include" | "Exclude" | "Escalate"; author: string; at: string; rationale: string; mine: boolean };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scifilter-chat`;
+
 
 const TEAM = [
   { name: "Materials group", members: ["A. Laine", "M. Okonjo", "You"], focus: "Solid-state electrolytes" },
