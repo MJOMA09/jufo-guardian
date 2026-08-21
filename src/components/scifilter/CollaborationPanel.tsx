@@ -388,10 +388,14 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
                       {paper && <p className="mt-1.5 text-[11px] text-muted-foreground line-clamp-1">on “{paper.title}”</p>}
                       <p className="mt-1.5 text-sm whitespace-pre-wrap">{c.body}</p>
                       <div className="mt-2 flex gap-2">
-                        <Button variant="ghost" size="sm" className="h-6 text-xs"
-                          onClick={() => setComments(prev => prev.map(x => x.id === c.id ? { ...x, resolved: !x.resolved } : x))}>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => toggleResolved(c)}>
                           {c.resolved ? "Reopen" : "Mark resolved"}
                         </Button>
+                        {c.mine && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive gap-1" onClick={() => deleteComment(c)}>
+                            <Trash2 className="h-3 w-3" />Delete
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   );
@@ -401,8 +405,11 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
             <div className="border-t p-3 flex gap-2">
               <Textarea value={commentDraft} onChange={e => setCommentDraft(e.target.value)} rows={2}
                 placeholder="Add a comment, a screening rationale, or a question for the team…" className="resize-none text-sm" />
-              <Button onClick={addComment} disabled={!commentDraft.trim()} className="self-end"><Send className="h-4 w-4" /></Button>
+              <Button onClick={addComment} disabled={!commentDraft.trim() || saving} className="self-end">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
             </div>
+
           </TabsContent>
 
           {/* DECISION TRACKING */}
