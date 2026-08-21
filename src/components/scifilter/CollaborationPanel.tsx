@@ -160,27 +160,55 @@ export default function CollaborationPanel({ papers, selectedId, onSelect, curre
     return events.sort((a, b) => +new Date(b.at) - +new Date(a.at));
   }, [comments, decisions, papers]);
 
-  const addComment = () => {
-    if (!commentDraft.trim()) return;
-    setComments(prev => [{
-      id: crypto.randomUUID(), paperId: selected?.id ?? null, author: me,
-      body: commentDraft.trim(), at: new Date().toISOString(), resolved: false,
-    }, ...prev]);
+  const addComment = async () => {
+    const body = commentDraft.trim();
+    if (!body || !userId) return;
+    if (!selected?.id) {
+      toast({ title: "Select a paper", description: "Comments are threaded on a paper — pick one from the shared queue first." });
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("scifilter_comments").insert({
+      paper_id: selected.id, user_id: userId, content: body, author_label: me,
+    });
+    setSaving(false);
+    if (error) return toast({ title: "Comment not saved", description: error.message, variant: "destructive" });
     setCommentDraft("");
+    loadActivity();
   };
 
-  const record = (decision: Decision["decision"]) => {
-    if (!selected) {
+  const toggleResolved = async (c: Comment) => {
+    const { error } = await supabase.from("scifilter_comments").update({ resolved: !c.resolved }).eq("id", c.id);
+    if (error) return toast({ title: "Could not update", description: error.message, variant: "destructive" });
+    loadActivity();
+  };
+
+  const deleteComment = async (c: Comment) => {
+    const { error } = await supabase.from("scifilter_comments").delete().eq("id", c.id);
+    if (error) return toast({ title: "Could not delete", description: error.message, variant: "destructive" });
+    loadActivity();
+  };
+
+  const record = async (decision: Decision["decision"]) => {
+    if (!selected?.id || !userId) {
       toast({ title: "Select a paper", description: "Pick a paper from the shared queue to record a decision against it." });
       return;
     }
-    setDecisions(prev => [{
-      id: crypto.randomUUID(), paperId: selected.id, label: selected.title,
-      decision, author: me, at: new Date().toISOString(), rationale: rationale.trim(),
-    }, ...prev.filter(d => d.paperId !== selected.id)]);
+    const payload = JSON.stringify({ decision, rationale: rationale.trim(), label: selected.title, author: me });
+    const existing = decisions.find(d => d.paperId === selected.id && d.mine);
+    setSaving(true);
+    const { error } = existing
+      ? await supabase.from("scifilter_annotations").update({ content: payload }).eq("id", existing.id)
+      : await supabase.from("scifilter_annotations").insert({
+          paper_id: selected.id, user_id: userId, kind: "decision", content: payload, is_shared: true,
+        });
+    setSaving(false);
+    if (error) return toast({ title: "Decision not saved", description: error.message, variant: "destructive" });
     setRationale("");
-    toast({ title: `Decision recorded: ${decision}`, description: "Visible to everyone in this team workspace." });
+    loadActivity();
+    toast({ title: `Decision recorded: ${decision}`, description: "Saved and shared with the team workspace." });
   };
+
 
   const runAi = async (kind: "meeting" | "handover" | "insight") => {
     if (papers.length === 0) {
