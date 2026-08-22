@@ -14,11 +14,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Filter, Search, Download, Loader2, ThumbsUp, ThumbsDown, ExternalLink,
   LogOut, FolderKanban, Users, Bookmark, Library, History, StickyNote,
   Network, GitBranch, FileText, AlertTriangle, Star, Layers, TrendingUp,
   ChevronRight, Sparkles, Beaker, Gauge, Plus, MessageSquare, LayoutGrid,
+  Trash2, Pencil, FolderPlus,
 } from "lucide-react";
 import ChatPanel from "@/components/scifilter/ChatPanel";
 import CollaborationPanel from "@/components/scifilter/CollaborationPanel";
