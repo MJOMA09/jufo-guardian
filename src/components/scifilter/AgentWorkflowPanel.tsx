@@ -517,7 +517,42 @@ Work only from the loaded paper set. Mark anything unavailable as "Not specified
                       </CollapsibleContent>
                     </Collapsible>
 
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!!runningId && runningId !== a.id}
+                        onClick={() => (runningId === a.id ? abortRef.current?.abort() : runAgent(a))}
+                      >
+                        {runningId === a.id
+                          ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Running…</>
+                          : <><Play className="h-3 w-3 mr-1" />Run agent</>}
+                      </Button>
+                      {runningId === a.id && (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => abortRef.current?.abort()}>
+                          <Square className="h-3 w-3 mr-1" />Stop
+                        </Button>
+                      )}
+                      {outputs[a.id] && runningId !== a.id && (
+                        <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setOutputs(o => ({ ...o, [a.id]: "" }))}>
+                          Clear draft
+                        </Button>
+                      )}
+                    </div>
+
+                    {outputs[a.id] !== undefined && outputs[a.id] !== "" && (
+                      <div className="rounded-md border bg-background p-2.5">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                          <UserCheck className="h-2.5 w-2.5" />Agent draft — awaiting your review
+                        </div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-xs leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs">
+                          <ReactMarkdown>{outputs[a.id]}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+
                     <Separator />
+
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
