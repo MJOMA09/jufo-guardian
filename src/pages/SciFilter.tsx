@@ -96,6 +96,12 @@ export default function Workspace() {
   const [collections, setCollections] = useState<Row[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
+  const [activeCollection, setActiveCollection] = useState<Row | null>(null);
+
+  // Dialog state
+  const [noteDialog, setNoteDialog] = useState<{ open: boolean; id: string | null; title: string; content: string }>({ open: false, id: null, title: "", content: "" });
+  const [textDialog, setTextDialog] = useState<{ open: boolean; kind: "project" | "collection" | "saved"; title: string; label: string; value: string }>({ open: false, kind: "project", title: "", label: "", value: "" });
+
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
