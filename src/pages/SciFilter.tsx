@@ -45,6 +45,7 @@ type Paper = {
   relevance_score: number;
   explanation: string;
   feedback?: "relevant" | "not_relevant" | null;
+  collection_id?: string | null;
 };
 
 const relevanceVariant = (r: string) => r === "High" ? "default" : r === "Medium" ? "secondary" : "outline";
