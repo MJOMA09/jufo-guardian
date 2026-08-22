@@ -12,8 +12,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import {
   Radar, TrendingUp, Lightbulb, FileText, Handshake, Users, GaugeCircle,
   Scale, ShieldCheck, ChevronRight, UserCheck, Eye, CircleDot, Clock,
-  AlertTriangle, Info, Sparkles,
+  AlertTriangle, Info, Sparkles, Play, Loader2, Square,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { useToast } from "@/hooks/use-toast";
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scifilter-chat`;
 
 interface Props {
   papers: any[];
