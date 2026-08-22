@@ -205,57 +205,113 @@ export default function Workspace() {
     } finally { setSearching(false); }
   };
 
-  const createProject = async () => {
-    const name = window.prompt("Project name")?.trim();
-    if (!name || !user) return;
-    const { data, error } = await supabase.from("scifilter_projects").insert({ user_id: user.id, name }).select().single();
-    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    setCurrentProjectId(data.id);
-    toast({ title: "Project created", description: name });
-    loadWorkspace();
+  const openCollection = async (col: Row) => {
+    setSearching(true);
+    setCenterTab("screening");
+    try {
+      const { data, error } = await supabase.from("scifilter_papers").select("*").eq("collection_id", col.id).order("relevance_score", { ascending: false });
+      if (error) throw error;
+      const list = (data || []).map(r => ({ ...r, concepts: (r.concepts as string[]) || [] })) as Paper[];
+      setActiveCollection(col);
+      setPapers(list);
+      setSelectedId(list[0]?.id ?? null);
+      toast({
+        title: `Collection: ${col.label}`,
+        description: list.length ? `${list.length} paper${list.length === 1 ? "" : "s"} loaded.` : "This collection is empty — add papers from the screening detail pane.",
+      });
+    } catch (e: any) {
+      toast({ title: "Could not load collection", description: e.message, variant: "destructive" });
+    } finally { setSearching(false); }
   };
 
-  const createCollection = async () => {
-    const name = window.prompt("Collection name")?.trim();
-    if (!name || !user) return;
-    const { error } = await supabase.from("scifilter_collections").insert({ user_id: user.id, name });
+  const addToCollection = async (paper: Paper, col: Row) => {
+    if (!paper.id) return;
+    const { error } = await supabase.from("scifilter_papers").update({ collection_id: col.id }).eq("id", paper.id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Collection created", description: name });
-    loadWorkspace();
+    setPapers(ps => ps.map(p => p.id === paper.id ? { ...p, collection_id: col.id } : p));
+    toast({ title: "Added to collection", description: `"${paper.title.slice(0, 60)}" → ${col.label}` });
   };
 
-  const saveCurrentSearch = async () => {
-    if (!user) return;
-    if (!query.trim()) return toast({ title: "Nothing to save", description: "Run or type a search first." });
-    const label = window.prompt("Label for this saved search", query)?.trim();
-    if (!label) return;
-    const { error } = await supabase.from("scifilter_saved_searches").insert({
-      user_id: user.id, label, query,
-      year_from: yearFrom ? parseInt(yearFrom) : null,
-      year_to: yearTo ? parseInt(yearTo) : null,
-      domain: domain || null,
+  const removeFromCollection = async (paper: Paper) => {
+    if (!paper.id) return;
+    const { error } = await supabase.from("scifilter_papers").update({ collection_id: null }).eq("id", paper.id);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    setPapers(ps => activeCollection ? ps.filter(p => p.id !== paper.id) : ps.map(p => p.id === paper.id ? { ...p, collection_id: null } : p));
+    toast({ title: "Removed from collection" });
+  };
+
+  const openTextDialog = (kind: "project" | "collection" | "saved") => {
+    if (kind === "saved" && !query.trim()) {
+      return toast({ title: "Nothing to save", description: "Run or type a search first." });
+    }
+    setTextDialog({
+      open: true, kind,
+      title: kind === "project" ? "New project" : kind === "collection" ? "New collection" : "Save this search",
+      label: kind === "saved" ? "Label" : "Name",
+      value: kind === "saved" ? query : "",
     });
-    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Search saved", description: label });
+  };
+
+  const submitTextDialog = async () => {
+    const value = textDialog.value.trim();
+    if (!value || !user) return;
+    if (textDialog.kind === "project") {
+      const { data, error } = await supabase.from("scifilter_projects").insert({ user_id: user.id, name: value }).select().single();
+      if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+      setCurrentProjectId(data.id);
+      toast({ title: "Project created", description: value });
+    } else if (textDialog.kind === "collection") {
+      const { error } = await supabase.from("scifilter_collections").insert({ user_id: user.id, name: value });
+      if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Collection created", description: value });
+    } else {
+      const { error } = await supabase.from("scifilter_saved_searches").insert({
+        user_id: user.id, label: value, query,
+        year_from: yearFrom ? parseInt(yearFrom) : null,
+        year_to: yearTo ? parseInt(yearTo) : null,
+        domain: domain || null,
+      });
+      if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Search saved", description: value });
+    }
+    setTextDialog(d => ({ ...d, open: false, value: "" }));
     loadWorkspace();
   };
 
-  const createNote = async () => {
+  const saveNote = async () => {
     if (!user) return;
-    const title = window.prompt("Note title")?.trim();
-    if (!title) return;
-    const content = window.prompt("Note content", "")?.trim() ?? "";
-    const { error } = await supabase.from("scifilter_notes").insert({ user_id: user.id, title, content });
+    const title = noteDialog.title.trim();
+    if (!title) return toast({ title: "Title required" });
+    if (noteDialog.id) {
+      const { error } = await supabase.from("scifilter_notes")
+        .update({ title, content: noteDialog.content }).eq("id", noteDialog.id);
+      if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Note updated", description: title });
+    } else {
+      const { error } = await supabase.from("scifilter_notes")
+        .insert({ user_id: user.id, title, content: noteDialog.content });
+      if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Note added", description: title });
+    }
+    setNoteDialog({ open: false, id: null, title: "", content: "" });
+    loadWorkspace();
+  };
+
+  const deleteNote = async () => {
+    if (!noteDialog.id) return;
+    const { error } = await supabase.from("scifilter_notes").delete().eq("id", noteDialog.id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Note added", description: title });
+    setNoteDialog({ open: false, id: null, title: "", content: "" });
+    toast({ title: "Note deleted" });
     loadWorkspace();
   };
 
   const newWorkflow = () => {
     setPapers([]); setSelectedId(null); setQuery(""); setYearFrom(""); setYearTo(""); setDomain("");
-    setHighOnly(false); setCenterTab("screening");
+    setHighOnly(false); setCenterTab("screening"); setActiveCollection(null);
     toast({ title: "New workflow", description: "Workspace cleared — start a fresh screening run." });
   };
+
 
 
   const handleFeedback = async (paper: Paper, value: "relevant" | "not_relevant") => {
