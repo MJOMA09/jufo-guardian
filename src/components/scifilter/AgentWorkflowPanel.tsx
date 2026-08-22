@@ -49,9 +49,85 @@ function tokens(text: string): string[] {
 }
 
 export default function AgentWorkflowPanel({ papers, query, onSelect }: Props) {
+  const { toast } = useToast();
   const [oversight, setOversight] = useState(true);
   const [autonomy, setAutonomy] = useState<Record<string, boolean>>({});
   const [openTrace, setOpenTrace] = useState<string | null>(null);
+  const [runningId, setRunningId] = useState<string | null>(null);
+  const [outputs, setOutputs] = useState<Record<string, string>>({});
+  const abortRef = useRef<AbortController | null>(null);
+
+  const runAgent = async (agent: { id: string; name: string; purpose: string; trace: string[] }) => {
+    if (runningId) return;
+    if (!papers.length) {
+      toast({ title: "No corpus loaded", description: "Run a search first so the agent has papers to reason over." });
+      return;
+    }
+    setRunningId(agent.id);
+    setOutputs(o => ({ ...o, [agent.id]: "" }));
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    const prompt = `Act as the "${agent.name}" agent.
+Purpose: ${agent.purpose}
+Follow this reasoning procedure:
+${agent.trace.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+${query ? `Active research question: "${query}".` : ""}
+Work only from the loaded paper set. Mark anything unavailable as "Not specified". Present the result as a reviewable draft for a human, never as a final decision.`;
+
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }], papers }),
+        signal: ctrl.signal,
+      });
+
+      if (!resp.ok || !resp.body) {
+        if (resp.status === 429) toast({ title: "Rate limited", description: "Try again shortly.", variant: "destructive" });
+        else if (resp.status === 402) toast({ title: "Credits exhausted", description: "Add credits in Workspace → Usage.", variant: "destructive" });
+        else toast({ title: "Agent unavailable", variant: "destructive" });
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let acc = "";
+      let done = false;
+      while (!done) {
+        const { done: d, value } = await reader.read();
+        if (d) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n")) !== -1) {
+          let line = buf.slice(0, idx);
+          buf = buf.slice(idx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (json === "[DONE]") { done = true; break; }
+          try {
+            const parsed = JSON.parse(json);
+            const c = parsed.choices?.[0]?.delta?.content;
+            if (c) { acc += c; setOutputs(o => ({ ...o, [agent.id]: acc })); }
+          } catch {
+            buf = line + "\n" + buf;
+            break;
+          }
+        }
+      }
+    } catch (e: any) {
+      if (e?.name !== "AbortError") toast({ title: "Agent error", description: String(e?.message || e), variant: "destructive" });
+    } finally {
+      setRunningId(null);
+      abortRef.current = null;
+    }
+  };
+
 
   const now = new Date().getFullYear();
 
