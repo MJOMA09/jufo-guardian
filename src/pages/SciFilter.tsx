@@ -397,7 +397,7 @@ export default function Workspace() {
                   {
                     key: "projects", label: "Projects", icon: FolderKanban,
                     items: projects.map(p => ({ id: p.id, label: p.label || "Untitled project", onClick: () => setCurrentProjectId(p.id) })),
-                    onAdd: createProject,
+                    onAdd: () => openTextDialog("project"),
                   },
                   {
                     key: "saved", label: "Saved searches", icon: Bookmark,
@@ -405,12 +405,12 @@ export default function Workspace() {
                       id: s.id, label: s.label,
                       onClick: () => runSearch({ query: s.query, yearFrom: s.year_from ? String(s.year_from) : "", yearTo: s.year_to ? String(s.year_to) : "", domain: s.domain || "" }),
                     })),
-                    onAdd: saveCurrentSearch,
+                    onAdd: () => openTextDialog("saved"),
                   },
                   {
                     key: "collections", label: "Collections", icon: Library,
-                    items: collections.map(c => ({ id: c.id, label: c.label || "Untitled collection", onClick: () => setCenterTab("collaboration") })),
-                    onAdd: createCollection,
+                    items: collections.map(c => ({ id: c.id, label: c.label || "Untitled collection", onClick: () => openCollection(c) })),
+                    onAdd: () => openTextDialog("collection"),
                   },
                   {
                     key: "history", label: "Workflow history", icon: History,
@@ -418,8 +418,8 @@ export default function Workspace() {
                   },
                   {
                     key: "notes", label: "Shared notes", icon: StickyNote,
-                    items: notes.map(n => ({ id: n.id, label: n.title, onClick: () => toast({ title: n.title, description: n.content || "No content" }) })),
-                    onAdd: createNote,
+                    items: notes.map(n => ({ id: n.id, label: n.title, onClick: () => setNoteDialog({ open: true, id: n.id, title: n.title, content: n.content || "" }) })),
+                    onAdd: () => setNoteDialog({ open: true, id: null, title: "", content: "" }),
                   },
                 ].map(sec => {
                   const Icon = sec.icon;
