@@ -397,7 +397,7 @@ export default function Workspace() {
                   {
                     key: "projects", label: "Projects", icon: FolderKanban,
                     items: projects.map(p => ({ id: p.id, label: p.label || "Untitled project", onClick: () => setCurrentProjectId(p.id) })),
-                    onAdd: createProject,
+                    onAdd: () => openTextDialog("project"),
                   },
                   {
                     key: "saved", label: "Saved searches", icon: Bookmark,
@@ -405,12 +405,12 @@ export default function Workspace() {
                       id: s.id, label: s.label,
                       onClick: () => runSearch({ query: s.query, yearFrom: s.year_from ? String(s.year_from) : "", yearTo: s.year_to ? String(s.year_to) : "", domain: s.domain || "" }),
                     })),
-                    onAdd: saveCurrentSearch,
+                    onAdd: () => openTextDialog("saved"),
                   },
                   {
                     key: "collections", label: "Collections", icon: Library,
-                    items: collections.map(c => ({ id: c.id, label: c.label || "Untitled collection", onClick: () => setCenterTab("collaboration") })),
-                    onAdd: createCollection,
+                    items: collections.map(c => ({ id: c.id, label: c.label || "Untitled collection", onClick: () => openCollection(c) })),
+                    onAdd: () => openTextDialog("collection"),
                   },
                   {
                     key: "history", label: "Workflow history", icon: History,
@@ -418,8 +418,8 @@ export default function Workspace() {
                   },
                   {
                     key: "notes", label: "Shared notes", icon: StickyNote,
-                    items: notes.map(n => ({ id: n.id, label: n.title, onClick: () => toast({ title: n.title, description: n.content || "No content" }) })),
-                    onAdd: createNote,
+                    items: notes.map(n => ({ id: n.id, label: n.title, onClick: () => setNoteDialog({ open: true, id: n.id, title: n.title, content: n.content || "" }) })),
+                    onAdd: () => setNoteDialog({ open: true, id: null, title: "", content: "" }),
                   },
                 ].map(sec => {
                   const Icon = sec.icon;
@@ -508,6 +508,12 @@ export default function Workspace() {
                   <TabsTrigger value="agents" className="text-xs gap-1.5"><Sparkles className="h-3.5 w-3.5" />Agents</TabsTrigger>
                 </TabsList>
               </Tabs>
+              {activeCollection && (
+                <Badge variant="secondary" className="gap-1 text-[10px]">
+                  <Library className="h-3 w-3" />{activeCollection.label}
+                  <button type="button" className="ml-1 text-muted-foreground hover:text-foreground" onClick={() => setActiveCollection(null)} aria-label="Exit collection view">×</button>
+                </Badge>
+              )}
               <div className="flex-1" />
               {centerTab === "screening" && papers.length > 0 && (
                 <>
@@ -607,8 +613,33 @@ export default function Workspace() {
                           </div>
                         )}
 
-                        <div className="flex items-center gap-2 pt-2 border-t">
-                          <span className="text-xs text-muted-foreground mr-auto">Feedback re-ranks your queue</span>
+                        <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <FolderPlus className="h-3.5 w-3.5 mr-1" />
+                                {collections.find(c => c.id === selected.collection_id)?.label ?? "Add to collection"}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">
+                              {collections.length === 0 ? (
+                                <DropdownMenuItem onClick={() => openTextDialog("collection")}>
+                                  <Plus className="h-3.5 w-3.5 mr-2" />Create a collection
+                                </DropdownMenuItem>
+                              ) : collections.map(c => (
+                                <DropdownMenuItem key={c.id} onClick={() => addToCollection(selected, c)}>
+                                  <Library className="h-3.5 w-3.5 mr-2" />
+                                  <span className="truncate">{c.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {(activeCollection || selected.collection_id) && (
+                            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => removeFromCollection(selected)}>
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />Remove from collection
+                            </Button>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-auto">Feedback re-ranks your queue</span>
                           <Button size="sm" variant={selected.feedback === "relevant" ? "default" : "outline"} onClick={() => handleFeedback(selected, "relevant")}>
                             <ThumbsUp className="h-3.5 w-3.5 mr-1" />Relevant
                           </Button>
@@ -725,6 +756,59 @@ export default function Workspace() {
           </aside>
         </div>
       </div>
+
+      {/* Note editor */}
+      <Dialog open={noteDialog.open} onOpenChange={(o) => setNoteDialog(d => ({ ...d, open: o }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{noteDialog.id ? "Edit note" : "New note"}</DialogTitle>
+            <DialogDescription>Notes are shared with your workspace team.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="note-title" className="text-xs">Title</Label>
+              <Input id="note-title" value={noteDialog.title} onChange={e => setNoteDialog(d => ({ ...d, title: e.target.value }))} placeholder="Note title" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="note-content" className="text-xs">Content</Label>
+              <Textarea id="note-content" rows={8} value={noteDialog.content} onChange={e => setNoteDialog(d => ({ ...d, content: e.target.value }))} placeholder="Write your observations, screening criteria, or hand-off notes…" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {noteDialog.id ? (
+              <Button variant="destructive" size="sm" onClick={deleteNote}><Trash2 className="h-3.5 w-3.5 mr-1" />Delete</Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setNoteDialog({ open: false, id: null, title: "", content: "" })}>Cancel</Button>
+              <Button size="sm" onClick={saveNote}>{noteDialog.id ? "Save changes" : "Add note"}</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Project / collection / saved-search dialog */}
+      <Dialog open={textDialog.open} onOpenChange={(o) => setTextDialog(d => ({ ...d, open: o }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{textDialog.title}</DialogTitle>
+            <DialogDescription>
+              {textDialog.kind === "saved" ? "Save the current query and filters so you can rerun them later." : "Give it a clear name so your team can find it."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="text-dialog" className="text-xs">{textDialog.label}</Label>
+            <Input
+              id="text-dialog" autoFocus value={textDialog.value}
+              onChange={e => setTextDialog(d => ({ ...d, value: e.target.value }))}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); submitTextDialog(); } }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setTextDialog(d => ({ ...d, open: false }))}>Cancel</Button>
+            <Button size="sm" onClick={submitTextDialog} disabled={!textDialog.value.trim()}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
