@@ -508,6 +508,12 @@ export default function Workspace() {
                   <TabsTrigger value="agents" className="text-xs gap-1.5"><Sparkles className="h-3.5 w-3.5" />Agents</TabsTrigger>
                 </TabsList>
               </Tabs>
+              {activeCollection && (
+                <Badge variant="secondary" className="gap-1 text-[10px]">
+                  <Library className="h-3 w-3" />{activeCollection.label}
+                  <button type="button" className="ml-1 text-muted-foreground hover:text-foreground" onClick={() => setActiveCollection(null)} aria-label="Exit collection view">×</button>
+                </Badge>
+              )}
               <div className="flex-1" />
               {centerTab === "screening" && papers.length > 0 && (
                 <>
