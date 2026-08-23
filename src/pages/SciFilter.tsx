@@ -607,8 +607,33 @@ export default function Workspace() {
                           </div>
                         )}
 
-                        <div className="flex items-center gap-2 pt-2 border-t">
-                          <span className="text-xs text-muted-foreground mr-auto">Feedback re-ranks your queue</span>
+                        <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <FolderPlus className="h-3.5 w-3.5 mr-1" />
+                                {collections.find(c => c.id === selected.collection_id)?.label ?? "Add to collection"}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">
+                              {collections.length === 0 ? (
+                                <DropdownMenuItem onClick={() => openTextDialog("collection")}>
+                                  <Plus className="h-3.5 w-3.5 mr-2" />Create a collection
+                                </DropdownMenuItem>
+                              ) : collections.map(c => (
+                                <DropdownMenuItem key={c.id} onClick={() => addToCollection(selected, c)}>
+                                  <Library className="h-3.5 w-3.5 mr-2" />
+                                  <span className="truncate">{c.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {(activeCollection || selected.collection_id) && (
+                            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => removeFromCollection(selected)}>
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />Remove from collection
+                            </Button>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-auto">Feedback re-ranks your queue</span>
                           <Button size="sm" variant={selected.feedback === "relevant" ? "default" : "outline"} onClick={() => handleFeedback(selected, "relevant")}>
                             <ThumbsUp className="h-3.5 w-3.5 mr-1" />Relevant
                           </Button>
