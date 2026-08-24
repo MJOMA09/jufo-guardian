@@ -48,8 +48,7 @@ export default function Login() {
       return;
     }
     try {
-      const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
-      if (roleError) throw roleError;
+      const isAdmin = await checkIsAdmin(data.user.id);
       if (!isAdmin) {
         setError("This account does not have administrator access.");
         setLoading(false);
