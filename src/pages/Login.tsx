@@ -15,10 +15,16 @@ export default function Login() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const routeSignedInUser = async (userId: string) => {
-    const { data, error: roleError } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  const checkIsAdmin = async (userId: string) => {
+    const { data, error: roleError } = await supabase
+      .from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
     if (roleError) throw roleError;
-    navigate(data ? "/admin" : "/app", { replace: true });
+    return !!data;
+  };
+
+  const routeSignedInUser = async (userId: string) => {
+    const isAdmin = await checkIsAdmin(userId);
+    navigate(isAdmin ? "/admin" : "/app", { replace: true });
   };
 
   useEffect(() => {
@@ -42,8 +48,7 @@ export default function Login() {
       return;
     }
     try {
-      const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
-      if (roleError) throw roleError;
+      const isAdmin = await checkIsAdmin(data.user.id);
       if (!isAdmin) {
         setError("This account does not have administrator access.");
         setLoading(false);

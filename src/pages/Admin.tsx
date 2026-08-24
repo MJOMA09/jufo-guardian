@@ -59,8 +59,9 @@ export default function Admin() {
     if (!session?.user) { navigate("/login", { replace: true }); return; }
     setSelfId(session.user.id);
 
-    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" });
-    if (roleError || !isAdmin) { navigate("/app", { replace: true }); return; }
+    const { data: adminRole, error: roleError } = await supabase
+      .from("user_roles").select("role").eq("user_id", session.user.id).eq("role", "admin").maybeSingle();
+    if (roleError || !adminRole) { navigate("/app", { replace: true }); return; }
 
     const [statsRes, usersRes, searchRes] = await Promise.all([
       supabase.rpc("get_sifter_admin_stats"),
