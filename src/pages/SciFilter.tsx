@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
-  Filter, Search, Download, Loader2, ThumbsUp, ThumbsDown, ExternalLink,
+  Search, Download, Loader2, ThumbsUp, ThumbsDown, ExternalLink,
   LogOut, FolderKanban, Users, Bookmark, Library, History, StickyNote,
   Network, GitBranch, FileText, AlertTriangle, Star, Layers, TrendingUp,
   ChevronRight, Sparkles, Beaker, Gauge, Plus, MessageSquare, LayoutGrid,
@@ -29,6 +29,7 @@ import CollaborationPanel from "@/components/scifilter/CollaborationPanel";
 import ExplainabilityPanel from "@/components/scifilter/ExplainabilityPanel";
 import KnowledgeGraphPanel from "@/components/scifilter/KnowledgeGraphPanel";
 import AgentWorkflowPanel from "@/components/scifilter/AgentWorkflowPanel";
+import { SifterLogo } from "@/components/Header";
 
 type Paper = {
   id?: string;
@@ -369,12 +370,7 @@ export default function Workspace() {
       <div className="h-screen flex flex-col bg-background">
         {/* Top bar */}
         <header className="h-12 border-b bg-card flex items-center px-4 gap-3 shrink-0">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-accent-gradient grid place-items-center shadow-elevated">
-              <Filter className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold tracking-tight">Sifter</span>
-          </Link>
+          <SifterLogo className="h-8 w-auto max-w-[120px]" />
           <span className="text-xs text-muted-foreground">Workspace</span>
           <div className="flex-1" />
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={newWorkflow}><Plus className="h-3.5 w-3.5" />New workflow</Button>

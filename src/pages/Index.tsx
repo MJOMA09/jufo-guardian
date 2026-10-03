@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { SifterLogo } from "@/components/Header";
 import {
   Sparkles,
   Search,
@@ -46,17 +47,12 @@ const Reveal = ({ children, delay = 0, className = "" }: { children: React.React
 const Nav = () => (
   <header className="sticky top-0 z-40 backdrop-blur-md bg-background/75 border-b border-border/60">
     <div className="container flex h-16 items-center justify-between">
-      <Link to="/" className="flex items-center gap-2">
-        <div className="relative">
-          <div className="h-7 w-7 rounded-md bg-accent-gradient flex items-center justify-center shadow-soft">
-            <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
-          </div>
-        </div>
-        <span className="font-display text-xl tracking-tight">Sifter</span>
+      <div className="flex items-center gap-2">
+        <SifterLogo className="h-9 w-auto max-w-[132px] sm:max-w-[156px]" />
         <span className="ml-1 text-[10px] uppercase tracking-widest text-muted-foreground border border-border rounded px-1.5 py-0.5">
           for R&amp;D
         </span>
-      </Link>
+      </div>
       <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
         <a href="#workflow" className="hover:text-foreground transition-colors">Workflow</a>
         <a href="#features" className="hover:text-foreground transition-colors">Features</a>
@@ -393,8 +389,7 @@ const Index = () => {
       <footer className="border-t border-border/60">
         <div className="container py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded bg-accent-gradient" />
-            <span className="font-display text-base text-foreground">Sifter</span>
+            <SifterLogo className="h-7 w-auto max-w-[120px]" />
             <span>· AI-supported research for R&amp;D</span>
           </div>
           <div className="flex items-center gap-6">

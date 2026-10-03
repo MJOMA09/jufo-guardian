@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SifterLogo } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -116,7 +117,8 @@ export default function Admin() {
     <main className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4">
-          <Shield className="h-5 w-5 text-primary" />
+          <SifterLogo className="h-9 w-auto max-w-[144px]" />
+          <Shield className="ml-2 h-5 w-5 text-primary" />
           <div>
             <h1 className="font-semibold">Sifter administration</h1>
             <p className="text-xs text-muted-foreground">Live platform activity</p>

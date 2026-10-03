@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Filter, Loader2, Shield } from "lucide-react";
+import { SifterLogo } from "@/components/Header";
+import { Loader2, Shield } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ export default function Login() {
     <main className="min-h-screen grid place-items-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Link to="/" className="mb-3 flex items-center justify-center gap-2"><Filter className="h-6 w-6 text-primary" /><span className="text-xl font-semibold">Sifter</span></Link>
+          <div className="mb-3 flex justify-center"><SifterLogo className="h-12 w-auto max-w-[200px]" /></div>
           <CardTitle className="flex items-center justify-center gap-2"><Shield className="h-5 w-5 text-primary" />Administrator sign in</CardTitle>
           <CardDescription>Use your Sifter account. Access is verified from your assigned role.</CardDescription>
         </CardHeader>
