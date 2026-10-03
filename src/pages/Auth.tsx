@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SifterLogo } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Filter, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -64,10 +65,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Link to="/" className="flex items-center justify-center gap-2 mb-2">
-            <Filter className="h-6 w-6 text-primary" />
-            <span className="text-2xl font-bold">Sifter</span>
-          </Link>
+          <div className="mb-2 flex justify-center"><SifterLogo className="h-12 w-auto max-w-[200px]" /></div>
           <CardDescription>Sign in to access the research assistant</CardDescription>
         </CardHeader>
         <CardContent>
