@@ -66,7 +66,7 @@ export default function Login() {
     <main className="min-h-screen grid place-items-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mb-3 flex justify-center"><SifterLogo className="h-12 w-auto max-w-[200px]" /></div>
+          <div className="mb-3 flex justify-center"><SifterLogo className="h-16 w-auto max-w-[260px]" /></div>
           <CardTitle className="flex items-center justify-center gap-2"><Shield className="h-5 w-5 text-primary" />Administrator sign in</CardTitle>
           <CardDescription>Use your Sifter account. Access is verified from your assigned role.</CardDescription>
         </CardHeader>
