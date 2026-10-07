@@ -6,7 +6,7 @@ type SifterLogoProps = {
   className?: string;
 };
 
-export const SifterLogo: React.FC<SifterLogoProps> = ({ className = "h-20 w-auto max-w-[340px]" }) => (
+export const SifterLogo: React.FC<SifterLogoProps> = ({ className = "h-16 w-auto max-w-[280px]" }) => (
   <Link
     to="/"
     aria-label="Sifter home"
@@ -19,7 +19,7 @@ export const SifterLogo: React.FC<SifterLogoProps> = ({ className = "h-20 w-auto
 const Header: React.FC = () => {
   return (
     <header className="w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 mb-6">
-      <div className="container mx-auto flex items-center h-24 px-4">
+      <div className="container mx-auto flex items-center h-20 px-4">
         <SifterLogo />
       </div>
     </header>
