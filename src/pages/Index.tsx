@@ -48,7 +48,7 @@ const Nav = () => (
   <header className="sticky top-0 z-40 backdrop-blur-md bg-background/75 border-b border-border/60">
     <div className="container flex h-16 items-center justify-between">
       <div className="flex items-center gap-2">
-        <SifterLogo className="h-9 w-auto max-w-[132px] sm:max-w-[156px]" />
+        <SifterLogo className="h-11 w-auto max-w-[170px] sm:h-12 sm:max-w-[210px]" />
         <span className="ml-1 text-[10px] uppercase tracking-widest text-muted-foreground border border-border rounded px-1.5 py-0.5">
           for R&amp;D
         </span>
@@ -389,7 +389,7 @@ const Index = () => {
       <footer className="border-t border-border/60">
         <div className="container py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <SifterLogo className="h-7 w-auto max-w-[120px]" />
+            <SifterLogo className="h-10 w-auto max-w-[170px]" />
             <span>· AI-supported research for R&amp;D</span>
           </div>
           <div className="flex items-center gap-6">
