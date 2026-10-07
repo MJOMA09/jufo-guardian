@@ -65,7 +65,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mb-2 flex justify-center"><SifterLogo className="h-16 w-auto max-w-[260px]" /></div>
+          <div className="mb-2 flex justify-center"><SifterLogo className="h-32 w-auto max-w-[520px]" /></div>
           <CardDescription>Sign in to access the research assistant</CardDescription>
         </CardHeader>
         <CardContent>
