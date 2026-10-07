@@ -370,7 +370,7 @@ export default function Workspace() {
       <div className="h-screen flex flex-col bg-background">
         {/* Top bar */}
         <header className="h-12 border-b bg-card flex items-center px-4 gap-3 shrink-0">
-          <SifterLogo className="h-11 w-auto max-w-[170px]" />
+          <SifterLogo className="h-20 w-auto max-w-[340px]" />
           <span className="text-xs text-muted-foreground">Workspace</span>
           <div className="flex-1" />
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={newWorkflow}><Plus className="h-3.5 w-3.5" />New workflow</Button>
