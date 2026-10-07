@@ -15,7 +15,7 @@ const NotFound = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted p-4">
       <div className="text-center">
-        <div className="mb-8 flex justify-center"><SifterLogo className="h-40 w-auto max-w-[600px]" /></div>
+        <div className="mb-8 flex justify-center"><SifterLogo className="h-32 w-auto max-w-[480px]" /></div>
         <h1 className="text-4xl font-bold mb-4">404</h1>
         <p className="text-xl text-muted-foreground mb-4">Oops! Page not found</p>
         <a href="/" className="text-primary hover:opacity-80 underline">

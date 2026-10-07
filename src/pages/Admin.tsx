@@ -117,7 +117,7 @@ export default function Admin() {
     <main className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-4">
-          <SifterLogo className="h-20 w-auto max-w-[380px]" />
+          <SifterLogo className="h-16 w-auto max-w-[300px]" />
           <Shield className="ml-2 h-5 w-5 text-primary" />
           <div>
             <h1 className="font-semibold">Sifter administration</h1>
