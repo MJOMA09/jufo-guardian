@@ -38,6 +38,9 @@ export function ForgotPasswordDialog({ className, redirectTo }: Props) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    // The dialog can be mounted inside a sign-in form, so keep this submit from
+    // bubbling up and triggering that form's handler with empty credentials.
+    event.stopPropagation();
     setSending(true);
     setError("");
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
