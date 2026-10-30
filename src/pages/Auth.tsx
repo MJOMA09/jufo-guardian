@@ -10,6 +10,7 @@ import { SifterLogo } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -81,6 +82,9 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign In"}
                 </Button>
+                <div className="flex justify-center pt-1">
+                  <ForgotPasswordDialog />
+                </div>
               </form>
             </TabsContent>
             <TabsContent value="signup" className="space-y-4 pt-4">
