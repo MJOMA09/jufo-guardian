@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SifterLogo } from "@/components/Header";
 import { Loader2, Shield } from "lucide-react";
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -76,6 +77,9 @@ export default function Login() {
             <div className="space-y-2"><Label htmlFor="admin-email">Email</Label><Input id="admin-email" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} /></div>
             <div className="space-y-2"><Label htmlFor="admin-password">Password</Label><Input id="admin-password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></div>
             <Button type="submit" className="w-full" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}</Button>
+            <div className="flex justify-center">
+              <ForgotPasswordDialog />
+            </div>
             <Button type="button" variant="ghost" className="w-full" asChild><Link to="/auth">Use the standard sign-in page</Link></Button>
           </form>
         </CardContent>
